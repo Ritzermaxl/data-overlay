@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Data overlay generator config",
+  "description": "Data overlay generation configuration file for setting input dimensions and complications",
+  "type": "object",
+
+  "properties": {
+    "videoWidth": {
+      "description": "Width of the video input in pixels",
+      "type": "integer",
+      "minimum": 0,
+      "exclusiveMinimum": true
+    },
+
+    "videoHeight": {
+      "description": "Height of the video input in pixels",
+      "type": "integer",
+      "minimum": 0,
+      "exclusiveMinimum": true
+    },
+
+    "videoFps": {
+      "description": "Frames per second of the video input",
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMinimum": true
+    },
+
+    "complications": {
+      "description": "List of complications to be generated in the video",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of complication to be generated"
+          },
+          "width": {
+            "type": "integer",
+            "description": "Width of the complication in pixels",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "height": {
+            "type": "integer",
+            "description": "Height of the complication in pixels",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "x": {
+            "type": "integer",
+            "description": "X coordinate of the complication in pixels",
+            "minimum": 0,
+            "exclusiveMinimum": false
+          },
+          "y": {
+            "type": "integer",
+            "description": "Y coordinate of the complication in pixels",
+            "minimum": 0,
+            "exclusiveMinimum": false
+          },
+          "options": {
+            "type": "object",
+            "description": "Options for the complication"
+          }
+        },
+        "required": ["type", "width", "height", "x", "y"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["videoWidth", "videoHeight", "videoFps"],
+  "additionalProperties": false
+}
