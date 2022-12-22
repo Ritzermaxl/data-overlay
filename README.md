@@ -162,6 +162,6 @@ CLI Options:
 pnpm run render -i <csv file> -c <config file> -o <output directory> [--frame-offset <frame offset>]
 ```
 
-[yt_data_overlay]: https://youtube.com/
+[yt_data_overlay]: https://youtu.be/o0-gsb4kFGo
 [ffmpeg_docs]: https://some-ffmpeg-site
 [nodejs]: https://nodejs.org/en/
