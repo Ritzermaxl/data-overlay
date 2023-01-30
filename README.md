@@ -139,7 +139,7 @@ complications:
 
 #### torqueVectoring
 
-The `torqueVectoring` complication visualizes applied torques to the powertrain of a 4WD vehicle. These torques are read from `flTorqueDataChannel`, `frTorqueDataChannel`, `rlTorqueDataChannel` and `rrTorqueDataChannel`. The maximum absolute value to be expected can be configured with `maxTorque`.  
+The `torqueVectoring` complication visualizes applied torques to the powertrain of a 4WD vehicle. These torques are read from `flTorqueDataChannel`, `frTorqueDataChannel`, `rlTorqueDataChannel` and `rrTorqueDataChannel`. The maximum absolute value to be expected can be configured with `maxTorque`. A warning is displayed, if this value is exceeded.
 
 | option | description | required | default value |
 | --------------------------------------- | --------------------------------------------------- | -------- | ------------- |
@@ -162,6 +162,31 @@ complications:
       rlTorqueDataChannel: <signal>
       rrTorqueDataChannel: <signal>
       maxTorque: 450
+```
+
+#### throttleAndBrake
+
+The `throttleAndBrake` complication visualizes the applied throttle and brake pedal positions. These positions are read from `throttleDataChannel` and `brakeDataChannel`, respectively. The maximum value to be expected can be configured with `maxThrottle` and `maxBrake`. A warning is displayed, if this value is exceeded.  
+
+| option | description | required | default value |
+| --------------------------------------- | --------------------------------------------------- | -------- | ------------- |
+| throttleDataChannel | data channel for throttle pedal value | true | - |
+| brakeDataChannel | data channel for brake pedal value | true | - |
+| maxThrottle | expected maximum value of throttle pedal values | true | - |
+| maxBrake | expected maximum value of brake pedal values | true | - |
+
+```yml
+complications:
+  - type: torqueVectoring
+    width: 300
+    height: 375
+    x: 1620
+    y: 15
+    options:
+      throttleDataChannel: <signal>
+      brakeDataChannel: <signal>
+      maxThrottle: 1
+      maxBrake: 1
 ```
 
 ## Installation
