@@ -80,6 +80,11 @@ Assuming the measurement data CSV file provides its values in `m/s^2`, the facto
 | --------------------------------------- | --------------------------------------------------- | -------- | ------------- |
 | xAccelerationDataChannel | data channel for x acceleration value | true | - |
 | yAccelerationDataChannel | data channel for y acceleration value | true | - |
+| xAccelerationFactor | scaling factor for x acceleration value | true | - |
+| yAccelerationFactor | scaling factor for y acceleration value | true | - |
+| indicatorSize | size of the moving indicator | true | - |
+| indicatorBufferSize | number of displayed predecessor frames for the trail of the moving indicator | true | - |
+| indicatorBufferFalloff | faintness of displayed predecessor frames for the trail of the moving indicator | true | - |
 
 ```yml
 complications:
@@ -130,6 +135,30 @@ complications:
       paddingChar: "0"
       suffix: " kW"
       color: white
+```
+
+#### torqueVectoring
+
+The `torqueVectoring` complication visualizes applied torques to the powertrain of a 4WD vehicle. These torques are read from `flTorqueDataChannel`, `frTorqueDataChannel`, `rlTorqueDataChannel` and `rrTorqueDataChannel`. The maximum absolute value to be expected can be configured with `maxTorque`.  
+
+| option | description | required | default value |
+| --------------------------------------- | --------------------------------------------------- | -------- | ------------- |
+| xAccelerationDataChannel | data channel for x acceleration value | true | - |
+| yAccelerationDataChannel | data channel for y acceleration value | true | - |
+
+```yml
+complications:
+  - type: torqueVectoring
+    width: 300
+    height: 375
+    x: 1620
+    y: 15
+    options:
+      flTorqueDataChannel: <signal>
+      frTorqueDataChannel: <signal>
+      rlTorqueDataChannel: <signal>
+      rrTorqueDataChannel: <signal>
+      maxTorque: 450
 ```
 
 ## Installation
