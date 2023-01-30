@@ -120,7 +120,7 @@ class complication {
       }
       const torqueBarHeight = Math.min(this.maxTorqueBarHeight, Math.max(1, Math.abs(Math.round(torque * this.TORQUE_PIXEL_FACTOR))));
       const torqueBarYPosition = yOffset - Math.round(Math.min(this.maxTorqueBarHeight, Math.max(0, Math.round(torque * this.TORQUE_PIXEL_FACTOR))));
-      let torqueBarBackground = torque > 0 ? { r: 255, g: 0, b: 0, alpha: 0.75 } : { r: 0, g: 255, b: 0, alpha: 0.75 };
+      let torqueBarBackground = torque > 0 ? { r: 0, g: 255, b: 0, alpha: 0.75 } : { r: 255, g: 0, b: 0, alpha: 0.75 };
 
       return {
         input: {
