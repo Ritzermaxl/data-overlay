@@ -143,8 +143,11 @@ The `torqueVectoring` complication visualizes applied torques to the powertrain 
 
 | option | description | required | default value |
 | --------------------------------------- | --------------------------------------------------- | -------- | ------------- |
-| xAccelerationDataChannel | data channel for x acceleration value | true | - |
-| yAccelerationDataChannel | data channel for y acceleration value | true | - |
+| flTorqueDataChannel | data channel for front left torque value | true | - |
+| frTorqueDataChannel | data channel for front right torque value | true | - |
+| rlTorqueDataChannel | data channel for rear left torque value | true | - |
+| rrTorqueDataChannel | data channel for rear right torque value | true | - |
+| maxTorque | expected maximum absolute value of torque values | true | - |
 
 ```yml
 complications:
