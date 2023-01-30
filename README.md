@@ -162,6 +162,27 @@ CLI Options:
 pnpm run render -i <csv file> -c <config file> -o <output directory> [--frame-offset <frame offset>]
 ```
 
+## Example
+
+
+Preprocess measurement input data from .mf4 to .csv  
+
+```
+python3 ./data-preprocessing/main.py <measurement_filename>.mf4 -v -c <channel_name_1> <channel_name_2> <channel_name_n> -s <some_start_time> -e <some_end_time> -r <target_fps> -o <output_filename>
+```
+
+Create overlay frames depending on configuration file
+
+```
+pnpm run render -i <output_filename>.csv -c config.yml -o <overlay_frame_folder_name>
+```
+
+Transform, cut and overlay video (input parameters still to be added)
+
+```
+./ffmpeg-overlay.sh <video_filename>.mp4 <overlay_frame_folder_name> <target_fps> <video_start_time_in_00:00:00_format> <video_end_time_in_00:00:00_format>
+```
+
 [yt_data_overlay]: https://youtu.be/o0-gsb4kFGo
-[ffmpeg_docs]: https://some-ffmpeg-site
+[ffmpeg_docs]: https://ffmpeg.org/documentation.html
 [nodejs]: https://nodejs.org/en/
