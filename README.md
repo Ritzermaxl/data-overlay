@@ -80,6 +80,11 @@ Assuming the measurement data CSV file provides its values in `m/s^2`, the facto
 | --------------------------------------- | --------------------------------------------------- | -------- | ------------- |
 | xAccelerationDataChannel | data channel for x acceleration value | true | - |
 | yAccelerationDataChannel | data channel for y acceleration value | true | - |
+| xAccelerationFactor | scaling factor for x acceleration value | true | - |
+| yAccelerationFactor | scaling factor for y acceleration value | true | - |
+| indicatorSize | size of the moving indicator | true | - |
+| indicatorBufferSize | number of displayed predecessor frames for the trail of the moving indicator | true | - |
+| indicatorBufferFalloff | faintness of displayed predecessor frames for the trail of the moving indicator | true | - |
 
 ```yml
 complications:
@@ -132,6 +137,58 @@ complications:
       color: white
 ```
 
+#### torqueVectoring
+
+The `torqueVectoring` complication visualizes applied torques to the powertrain of a 4WD vehicle. These torques are read from `flTorqueDataChannel`, `frTorqueDataChannel`, `rlTorqueDataChannel` and `rrTorqueDataChannel`. The maximum absolute value to be expected can be configured with `maxTorque`. A warning is displayed, if this value is exceeded.
+
+| option | description | required | default value |
+| --------------------------------------- | --------------------------------------------------- | -------- | ------------- |
+| flTorqueDataChannel | data channel for front left torque value | true | - |
+| frTorqueDataChannel | data channel for front right torque value | true | - |
+| rlTorqueDataChannel | data channel for rear left torque value | true | - |
+| rrTorqueDataChannel | data channel for rear right torque value | true | - |
+| maxTorque | expected maximum absolute value of torque values | true | - |
+
+```yml
+complications:
+  - type: torqueVectoring
+    width: 300
+    height: 375
+    x: 1620
+    y: 15
+    options:
+      flTorqueDataChannel: <signal>
+      frTorqueDataChannel: <signal>
+      rlTorqueDataChannel: <signal>
+      rrTorqueDataChannel: <signal>
+      maxTorque: 450
+```
+
+#### throttleAndBrake
+
+The `throttleAndBrake` complication visualizes the applied throttle and brake pedal positions. These positions are read from `throttleDataChannel` and `brakeDataChannel`, respectively. The maximum value to be expected can be configured with `maxThrottle` and `maxBrake`. A warning is displayed, if this value is exceeded.  
+
+| option | description | required | default value |
+| --------------------------------------- | --------------------------------------------------- | -------- | ------------- |
+| throttleDataChannel | data channel for throttle pedal value | true | - |
+| brakeDataChannel | data channel for brake pedal value | true | - |
+| maxThrottle | expected maximum value of throttle pedal values | true | - |
+| maxBrake | expected maximum value of brake pedal values | true | - |
+
+```yml
+complications:
+  - type: torqueVectoring
+    width: 300
+    height: 375
+    x: 1620
+    y: 15
+    options:
+      throttleDataChannel: <signal>
+      brakeDataChannel: <signal>
+      maxThrottle: 1
+      maxBrake: 1
+```
+
 ## Installation
 
 ### Prerequisites
@@ -162,6 +219,27 @@ CLI Options:
 pnpm run render -i <csv file> -c <config file> -o <output directory> [--frame-offset <frame offset>]
 ```
 
-[yt_data_overlay]: https://youtube.com/
-[ffmpeg_docs]: https://some-ffmpeg-site
+## Example
+
+
+Preprocess measurement input data from .mf4 to .csv  
+
+```
+python3 ./data-preprocessing/main.py <measurement_filename>.mf4 -v -c <channel_name_1> <channel_name_2> <channel_name_n> -s <some_start_time> -e <some_end_time> -r <target_fps> -o <output_filename>
+```
+
+Create overlay frames depending on configuration file
+
+```
+pnpm run render -i <output_filename>.csv -c config.yml -o <overlay_frame_folder_name>
+```
+
+Transform, cut and overlay video (input parameters still to be added)
+
+```
+./ffmpeg-overlay.sh <video_filename>.mp4 <overlay_frame_folder_name> <target_fps> <video_start_time_in_00:00:00_format> <video_end_time_in_00:00:00_format>
+```
+
+[yt_data_overlay]: https://youtu.be/o0-gsb4kFGo
+[ffmpeg_docs]: https://ffmpeg.org/documentation.html
 [nodejs]: https://nodejs.org/en/

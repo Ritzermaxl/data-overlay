@@ -1,6 +1,7 @@
 from asammdf import MDF
 import argparse
 from os import path
+import re
 
 def log(*messages):
   if args.verbose:
@@ -47,6 +48,13 @@ def get_channel_list(mdf):
       channel_names.append(quote)
   return channel_names
 
+def get_potential_signals(channel_name, mdf_chn_lst):
+  relevant_signals = []
+  p = re.compile('^[A-Za-z0-9_]{0,}' + channel_name + '[A-Za-z0-9_]{0,}$')
+  temp_list = [s for s in mdf_chn_lst if p.match(s)]
+  relevant_signals = relevant_signals + temp_list
+  return relevant_signals
+
 # check on filesystem if file exists
 if not path.exists(args.filename):
   print("ERROR: MDF input file '", args.filename, "' does not exist!")
@@ -65,7 +73,12 @@ for channel_name in channel_names:
     if args.verbose:
       log(channel_name, "is in the list")
   else:
+    alternative_signals = get_potential_signals(channel_name, all_channel_list)
     print("ERROR: '", channel_name, "' is NOT present in the MDF file")
+    if args.verbose:
+      log("Instead these are found:")
+      for alternative_signal in alternative_signals:
+        log(alternative_signal)
     exit(1)
 
 delta_t_list = []
