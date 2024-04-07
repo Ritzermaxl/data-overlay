@@ -5,7 +5,11 @@ import path from "path";
 
 class complication {
   constructor() {
-    this.defaultFontFile = path.join(process.env.PWD, "assets/DSEG14Classic-Regular.ttf");
+    this.defaultFontFile = path.join("./assets//DSEG14Classic-Regular.ttf");
+
+    //original command - did not work
+    //this.defaultFontFile = path.join(process.env.PWD, "assets/DSEG14Classic-Regular.ttf");
+    
     this.defaultFont = "DSEG14 Classic";
     this.defaultFontColor = "white";
     this.defaultFactor = 1;

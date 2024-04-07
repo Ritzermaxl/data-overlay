@@ -18,7 +18,6 @@ parser.add_argument('-o', '--output', type=str, default='output')
 
 args = parser.parse_args()
 
-
 log("Verbose mode is ON")
 log("Filename: ", args.filename)
 log("Channel: ", args.channel)

@@ -189,6 +189,21 @@ complications:
       maxBrake: 1
 ```
 
+#### throttleAndBrake
+
+The `steeringwheel` complication visualizes the steering Angle. SteeringAngle is read from `steeringAngle`
+
+
+```yml
+  - type: steeringwheel
+    width: 256
+    height: 256
+    x: 800
+    y: 500
+    options:
+      steeringAngle: BCM_steering_angle
+```
+
 ## Installation
 
 ### Prerequisites
