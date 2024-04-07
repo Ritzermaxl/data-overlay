@@ -9,8 +9,8 @@ output/
 config.yml
 *.mdf
 **/*.mf4
+dataoverlay/*.png
 *.csv
-
 **/venv/*
 
 # Created by https://www.toptal.com/developers/gitignore/api/node,visualstudiocode
