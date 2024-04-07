@@ -1,10 +1,21 @@
 # data overlay
 
+Fork of Greenteam Data Overlay Tool
+
 ## Intention
+
+This is a fork of a Tool from Greenteam Uni Stuttgart, original can be found [here][original_project]
 
 This tool allows the user to overlay a video clip with data visualizations of matching measurement data. It originated out of the **Mission World Record** project conducted by the GreenTeam Uni Stuttgart but may also be applicable for any other kind of (motor)sport.  
 It is fully configurable which allows the user to add as many visualizations as required.  
 An example video can be found [here][yt_data_overlay]
+
+## ToDo:
+
+1. Fix FFMPEG Conversion
+2. ADD POS/NEG Complication
+3. Integrate FFMPEG into Main Function
+4. Fix Overflow
 
 ## Workflow
 
@@ -255,6 +266,7 @@ Transform, cut and overlay video (input parameters still to be added)
 ./ffmpeg-overlay.sh <video_filename>.mp4 <overlay_frame_folder_name> <target_fps> <video_start_time_in_00:00:00_format> <video_end_time_in_00:00:00_format>
 ```
 
+[original_project]: https://github.com/greenteam-stuttgart/data-overlay
 [yt_data_overlay]: https://youtu.be/o0-gsb4kFGo
 [ffmpeg_docs]: https://ffmpeg.org/documentation.html
 [nodejs]: https://nodejs.org/en/
