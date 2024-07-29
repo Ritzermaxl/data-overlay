@@ -5,13 +5,12 @@ output/
 *.MOV
 *.avi
 *.AVI
-*.csv
 ##config.yml
 *.mdf
 **/*.mf4
 dataoverlay/*.png
 overlayframes/*.png
-*.csv
+###*.csv
 **/venv/*
 
 # Created by https://www.toptal.com/developers/gitignore/api/node,visualstudiocode
