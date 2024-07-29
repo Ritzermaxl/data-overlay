@@ -13,7 +13,7 @@ const AVAILABLE_LOG_LEVELS = [
   "debug",
   "silly",
 ];
-const DEFAULT_LOG_LEVEL = "info";
+const DEFAULT_LOG_LEVEL = "silly"; //info is standard
 export const LOG_LEVEL = parseLogLevel(process.env["LOG_LEVEL"]);
 console.log(`using log level '${LOG_LEVEL}'`);
 

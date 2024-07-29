@@ -1,0 +1,125 @@
+# source and destination video width in pixels
+videoWidth: 1920
+# source and destination video height in pixels
+videoHeight: 1080
+# destination video frame rate in frames per second (fps)
+videoFps: 60
+# list of configured complications
+# for more information on complication configuration please see below
+
+complications:
+  - type: acceleration
+    width: 300
+    height: 300
+    x: 50
+    y: 50
+    options:
+      xAccelerationDataChannel: GYRO_Acceleration_accX
+      yAccelerationDataChannel: GYRO_Acceleration_accY
+      xAccelerationFactor: 0.10193
+      yAccelerationFactor: 0.10193
+      indicatorSize: 15
+      indicatorBufferSize: 10
+      indicatorBufferFalloff: 0.8
+
+  - type: text
+    width: 500
+    height: 25
+    x: 160
+    y: 15
+    options:
+      signal: GYRO_Acceleration_accX
+      factor: 0.10193
+      digits: 1
+      padding: 3
+      paddingChar: "0"
+      suffix: " g"
+      color: white
+ 
+  - type: text
+    width: 500
+    height: 25
+    x: 360
+    y: 187
+    options:
+      signal: GYRO_Acceleration_accY
+      factor: 0.10193
+      digits: 1
+      padding: 3
+      paddingChar: "0"
+      suffix: " g"
+      color: white
+
+  - type: steeringwheel
+    width: 256
+    height: 256
+    x: 1600
+    y: 500
+    options:
+      steeringAngle: BCM_steering_angle
+
+  - type: torqueVectoring
+    width: 300
+    height: 375
+    x: 1600
+    y: 15
+    options:
+      flTorqueDataChannel: Torque_Setpoint_FL
+      frTorqueDataChannel: Torque_Setpoint_FR
+      rlTorqueDataChannel: Torque_Setpoint_RL
+      rrTorqueDataChannel: Torque_Setpoint_RR
+      maxTorque: 200
+
+  - type: throttleAndBrake 
+    width: 300
+    height: 375
+    x: 1620
+    y: 850
+    options:
+      throttleDataChannel: DCM_throttle
+      brakeDataChannel: DCM_brake_pressure_1  #DCM_brake_force
+      maxThrottle: 100
+      #maxBrake: 300    #Recu Value
+      maxBrake: 20      #Pressure
+
+  - type: text
+    width: 700
+    height: 50
+    x: 30
+    y: 1000
+    options:
+      signal: vcu_battery_actual_power_kw
+      factor: -0.001
+      digits: 0
+      padding: 3
+      paddingChar: "0"
+      suffix: " kW"
+      color: white
+
+  - type: text
+    width: 700
+    height: 50
+    x: 30
+    y: 900
+    options:
+      signal: vel_car_ges
+      factor: 3.6
+      digits: 1
+      padding: 4
+      paddingChar: "0"
+      suffix: " km/h"
+      color: white
+
+      complications:
+        # Existing complications
+        - type: valueGraph
+          width: 600
+          height: 200
+          x: 100
+          y: 800
+          options:
+            dataChannel: vel_car_ges
+            maxValue: 120  # Assuming the maximum speed to display on the graph is 120 km/h
+            minValue: 0    # Assuming the minimum speed to display on the graph is 0 km/h
+            graphDuration: 10  # Duration of the graph in seconds
+            color: "#00FF00"  # Color of the graph line, green in this case

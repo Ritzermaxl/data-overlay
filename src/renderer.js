@@ -5,7 +5,7 @@ import path from "path";
 
 let backgroundBuffer;
 let _config;
-let frameIndex = 0;
+let frameIndex = 0; 
 
 const configuredComplications = [];
 
@@ -29,17 +29,19 @@ async function init(config, data) {
 }
 
 async function render(dataPoint) {
-  let layers = [];
-  for (let configuredComplication of configuredComplications) {
+  const layerPromises = configuredComplications.map(async (configuredComplication) => {
     const complication = configuredComplication.complication;
     const complicationConfig = configuredComplication.complicationConfig;
     const layer = await complication.render(dataPoint, frameIndex);
-    layers.push({
+    return {
       input: layer,
       top: complicationConfig.y,
       left: complicationConfig.x,
-    });
-  }
+    };
+  });
+
+  // Wait for all the layer rendering promises to resolve
+  const layers = await Promise.all(layerPromises);
 
   const outputFilename = path.join(_config.args.out, `${frameIndex.toString().padStart(6, "0")}.png`);
   await sharp({
@@ -50,11 +52,13 @@ async function render(dataPoint) {
       background: { r: 255, g: 255, b: 255, alpha: 0.0 },
     },
   })
-    .composite(layers)
-    .toFile(outputFilename);
+  .composite(layers)
+  .toFile(outputFilename);
+
   log.info(`rendered frame ${frameIndex}/${_config.dataLength}`);
   frameIndex++;
 }
+
 
 const renderer = {
   init,

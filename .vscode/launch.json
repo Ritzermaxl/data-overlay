@@ -1,0 +1,40 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+
+            "args": ["FSEast_AutoX_Johannes.mf4" "-v" "-c" "GYRO_Acceleration_accX" "-s" "13" "-e" "231" "-o" "FSEastAutoXJohannes.csv"],
+            "purpose": ["debug-in-terminal"]
+        }
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Run Script with PNPM",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+              "run",
+              "render",
+              "--",
+              "-i",
+              ".\\fseastautox.csv",
+              "-c",
+              "config.yml",
+              "-o",
+              "overlayframes"
+            ],
+            "skipFiles": [
+              "<node_internals>/**"
+            ],
+            "console": "integratedTerminal"
+          }
+    ]
+}

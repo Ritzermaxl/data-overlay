@@ -6,10 +6,11 @@ output/
 *.avi
 *.AVI
 *.csv
-config.yml
+##config.yml
 *.mdf
 **/*.mf4
 dataoverlay/*.png
+overlayframes/*.png
 *.csv
 **/venv/*
 
@@ -355,3 +356,4 @@ poetry.toml
 
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+*.cpuprofile
