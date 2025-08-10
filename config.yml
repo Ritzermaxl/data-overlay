@@ -14,8 +14,8 @@ complications:
     x: 50
     y: 50
     options:
-      xAccelerationDataChannel: Gyro_Mov_Acc_X
-      yAccelerationDataChannel: Gyro_Mov_Acc_Y
+      xAccelerationDataChannel: Gyro_Movella_Acc_X
+      yAccelerationDataChannel: Gyro_Movella_Acc_Y
       xAccelerationFactor: 0.10193
       yAccelerationFactor: 0.10193
       indicatorSize: 15
@@ -28,7 +28,7 @@ complications:
     x: 160
     y: 15
     options:
-      signal: Gyro_Mov_Acc_Y
+      signal: Gyro_Movella_Acc_Y
       factor: 0.10193
       digits: 1
       padding: 3
@@ -42,7 +42,7 @@ complications:
     x: 360
     y: 187
     options:
-      signal: Gyro_Mov_Acc_Y
+      signal: Gyro_Movella_Acc_Y
       factor: 0.10193
       digits: 1
       padding: 3
@@ -50,13 +50,13 @@ complications:
       suffix: " g"
       color: white
 
-  - type: steeringwheel
-    width: 256
-    height: 256
-    x: 1600
-    y: 500
-    options:
-      steeringAngle: DCM_SteeringAngle
+#  - type: steeringwheel
+#    width: 256
+#    height: 256
+#    x: 1600
+#    y: 500
+#    options:
+#      steeringAngle: DCM_SteeringAngle
 
   - type: torqueVectoring
     width: 300
@@ -68,7 +68,7 @@ complications:
       frTorqueDataChannel: AMK_Torque_FR
       rlTorqueDataChannel: AMK_Torque_RL
       rrTorqueDataChannel: AMK_Torque_RR
-      maxTorque: 200
+      maxTorque: 300
 
   - type: throttleAndBrake 
     width: 300
@@ -101,24 +101,10 @@ complications:
     x: 30
     y: 900
     options:
-      signal: Velocity
+      signal: Groundspeed_Vel
       factor: 1
-      digits: 1
-      padding: 4
+      digits: 0
+      padding: 3
       paddingChar: "0"
       suffix: " km/h"
       color: white
-
-      complications:
-        # Existing complications
-        - type: valueGraph
-          width: 600
-          height: 200
-          x: 100
-          y: 800
-          options:
-            dataChannel: vel_car_ges
-            maxValue: 120  # Assuming the maximum speed to display on the graph is 120 km/h
-            minValue: 0    # Assuming the minimum speed to display on the graph is 0 km/h
-            graphDuration: 10  # Duration of the graph in seconds
-            color: "#00FF00"  # Color of the graph line, green in this case
