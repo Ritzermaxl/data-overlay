@@ -3,11 +3,6 @@ import { log } from "./logger.js";
 import sharp from "sharp";
 import path from "path";
 
-sharp.concurrency(0);
-sharp.cache(0);
-sharp.cache(false);
-sharp.simd(false);
-
 let backgroundBuffer;
 let _config;
 let frameIndex = 0; 
@@ -48,25 +43,35 @@ async function init(config, data, resumeFrame = 0) {
 }
 
 async function render(dataPoint) {
-  const layerPromises = configuredComplications.map(async (configuredComplication) => {
+  const layers = [];
+  
+  // Process complications serially to prevent native concurrency issues
+  for (const configuredComplication of configuredComplications) {
     const complication = configuredComplication.complication;
     const complicationConfig = configuredComplication.complicationConfig;
     const layer = await complication.render(dataPoint, frameIndex);
-    return {
-      input: layer,
-      top: complicationConfig.y,
-      left: complicationConfig.x,
-    };
-  });
-
-  // Wait for all the layer rendering promises to resolve
-  const layers = await Promise.all(layerPromises);
+    
+    // Ensure we don't pass null layers or invalid objects
+    if (layer) {
+      layers.push({
+        input: layer,
+        top: Math.round(complicationConfig.y),
+        left: Math.round(complicationConfig.x),
+      });
+    }
+  }
 
   const outputFilename = path.join(_config.args.out, `${frameIndex.toString().padStart(6, "0")}.png`);
   
-  await sharp(backgroundBuffer)
-    .composite(layers)
-    .toFile(outputFilename);
+  try {
+    await sharp(backgroundBuffer)
+      .composite(layers)
+      .toFile(outputFilename);
+  } catch (err) {
+    log.error(`Sharp compositor failed at frame ${frameIndex}: ${err.message}`);
+    // Atomic fallback: skip this frame but don't crash
+    return;
+  }
 
   log.info(`rendered frame ${frameIndex}/${_config.dataLength}`);
   frameIndex++;

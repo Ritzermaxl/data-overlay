@@ -3,6 +3,12 @@ import { ArgumentParser } from "argparse";
 import { log } from "./logger.js";
 import { loadConfig, createOutputDirectory } from "./util.js";
 import renderer from "./renderer.js";
+import sharp from "sharp";
+
+// Enforce strict single-threaded operation and disable unstable optimizations
+sharp.concurrency(1);
+sharp.cache(false);
+sharp.simd(false);
 
 const parser = new ArgumentParser({
   description: "data to image overlay",

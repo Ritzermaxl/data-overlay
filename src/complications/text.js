@@ -5,16 +5,11 @@ import path from "path";
 
 class complication {
   constructor() {
-    this.defaultFontFile = path.join("./assets//DSEG14Classic-Regular.ttf");
-
-    //original command - did not work
-    //this.defaultFontFile = path.join(process.env.PWD, "assets/DSEG14Classic-Regular.ttf");
-    
+    this.defaultFontFile = path.join("./assets/DSEG14Classic-Regular.ttf");
     this.defaultFont = "DSEG14 Classic";
     this.defaultFontColor = "white";
     this.defaultFactor = 1;
 
-    this._config;
     this.width;
     this.height;
     this.signalDataChannel;
@@ -27,11 +22,14 @@ class complication {
     this.fontColor;
     this.fontFile;
     this.font;
+    
+    // Simple cache to avoid recreating identical text buffers
+    this.cache = new Map();
   }
 
   async init(config, data) {
-    this.width = config.width;
-    this.height = config.height;
+    this.width = Math.max(1, config.width);
+    this.height = Math.max(1, config.height);
     this.signalDataChannel = config.options.signal;
 
     log.info(`initializing complication 'text' for signal '${this.signalDataChannel}'`);
@@ -61,31 +59,52 @@ class complication {
 
     const absSignal = Math.abs(signal);
     const fixedSignal = absSignal.toFixed(this.digits);
-    let text = `${fixedSignal}`;
+    let textStr = `${fixedSignal}`;
     if (this.padding && this.paddingChar) {
-      text = text.padStart(this.padding, this.paddingChar);
+      textStr = textStr.padStart(this.padding, this.paddingChar);
     }
     if (sign >= 0) {
-      text = `+${text}`;
+      textStr = `+${textStr}`;
     } else {
-      text = `-${text}`;
+      textStr = `-${textStr}`;
     }
-    if (this.prefix) text = `${this.prefix}${text}`;
-    if (this.suffix) text = `${text}${this.suffix}`;
-    text = `<span foreground="${this.fontColor}">${text}</span>`;
+    if (this.prefix) textStr = `${this.prefix}${textStr}`;
+    if (this.suffix) textStr = `${textStr}${this.suffix}`;
 
-    return await sharp({
-      text: {
-        text,
-        height: this.height,
-        width: this.width,
-        rgba: true,
-        font: this.font,
-        fontfile: this.fontFile,
-      },
-    })
+    // Cache lookup
+    if (this.cache.has(textStr)) {
+      return this.cache.get(textStr);
+    }
+
+    const pangoText = `<span foreground="${this.fontColor}">${textStr}</span>`;
+
+    try {
+      const buffer = await sharp({
+        text: {
+          text: pangoText,
+          height: this.height,
+          width: this.width,
+          rgba: true,
+          font: this.font,
+          fontfile: this.fontFile,
+        },
+      })
       .png()
       .toBuffer();
+      
+      // Limit cache size
+      if (this.cache.size < 1000) {
+        this.cache.set(textStr, buffer);
+      }
+      
+      return buffer;
+    } catch (err) {
+      log.error(`Text rendering failed for "${textStr}": ${err.message}`);
+      // Return empty 1x1 transparent buffer as fallback
+      return await sharp({
+        create: { width: 1, height: 1, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } }
+      }).png().toBuffer();
+    }
   }
 }
 
