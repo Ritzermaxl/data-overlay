@@ -10,7 +10,7 @@ output/
 **/*.mf4
 dataoverlay/*.png
 overlayframes/*.png
-###*.csv
+*.csv
 **/venv/*
 
 # Created by https://www.toptal.com/developers/gitignore/api/node,visualstudiocode

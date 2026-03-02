@@ -57,38 +57,53 @@ class complication {
     this.gForceBackgroundBuffer = await sharp(backgroundImageBuffer).resize(this.width, this.height).toBuffer();
     log.debug(`indicator size: ${this.indicatorSize}x${this.indicatorSize}`);
     this.gForceIndicatorBuffer = await sharp(indicatorImageBuffer).resize(this.indicatorSize, this.indicatorSize).toBuffer();
+
+    // Pre-calculate blurred indicator buffers
+    this.blurredIndicatorBuffers = [this.gForceIndicatorBuffer];
+    for (let i = 1; i < this.indicatorBufferSize; i++) {
+      const sigma = Math.max(0.3, i * this.indicatorBufferFalloff);
+      const blurred = await sharp(this.gForceIndicatorBuffer)
+        .blur(sigma)
+        .toBuffer();
+      this.blurredIndicatorBuffers.push(blurred);
+    }
+
     log.info(`complication 'acceleration' initialized`);
   }
 
   async render(dataPoint, frameIndex) {
     let xAcceleration = dataPoint[this.xAccelerationDataChannel];
     let yAcceleration = dataPoint[this.yAccelerationDataChannel];
-    if (!xAcceleration) {
+    if (typeof xAcceleration === "undefined") {
       log.warn(`data point at frame ${frameIndex} misses xAcceleration data`);
       xAcceleration = 0;
     }
-    if (!yAcceleration) {
+    if (typeof yAcceleration === "undefined") {
       log.warn(`data point at frame index ${frameIndex} misses yAcceleration data`);
       yAcceleration = 0;
     }
 
-    xAcceleration = parseFloat(xAcceleration) * this.xAccelerationFactor;
-    yAcceleration = parseFloat(yAcceleration) * this.yAccelerationFactor;
+    xAcceleration = parseFloat(xAcceleration);
+    yAcceleration = parseFloat(yAcceleration);
+    if (isNaN(xAcceleration)) xAcceleration = 0;
+    if (isNaN(yAcceleration)) yAcceleration = 0;
+    
+    xAcceleration *= this.xAccelerationFactor;
+    yAcceleration *= this.yAccelerationFactor;
 
     const indicatorXPosition = Math.round(this.width / 2 - this.indicatorSize / 2 - yAcceleration * this.gForcePixelCount);
     const indicatorYPosition = Math.round(this.height / 2 - this.indicatorSize / 2 + xAcceleration * this.gForcePixelCount);
 
-    this.indicatorBuffer[this.indicatorBufferIndex % this.indicatorBufferSize] = { indicatorXPosition, indicatorYPosition };
+    this.indicatorBuffer[this.indicatorBufferIndex % this.indicatorBufferSize] = { 
+      indicatorXPosition: isNaN(indicatorXPosition) ? 0 : indicatorXPosition, 
+      indicatorYPosition: isNaN(indicatorYPosition) ? 0 : indicatorYPosition 
+    };
 
     let indicators = [];
     for (let i = 0; i < this.indicatorBuffer.length; i++) {
       const indicator = this.indicatorBuffer[(this.indicatorBufferIndex + i) % this.indicatorBuffer.length];
-      let indicatorImageBuffer = this.gForceIndicatorBuffer;
-      if (i !== 0) {
-        indicatorImageBuffer = await sharp(this.gForceIndicatorBuffer)
-          .blur(i * this.indicatorBufferFalloff)
-          .toBuffer();
-      }
+      const indicatorImageBuffer = this.blurredIndicatorBuffers[i] || this.gForceIndicatorBuffer;
+      
       indicators.push({
         input: indicatorImageBuffer,
         left: indicator.indicatorXPosition,

@@ -114,12 +114,20 @@ class complication {
           break;
       }
       let torque = dataPoint[dataChannel];
-      if (!torque) {
+      if (typeof torque === "undefined" || torque === null) {
         log.warn(`data channel '${dataChannel}' not found in data point index ${frameIndex}`);
         torque = 0;
       }
-      const torqueBarHeight = Math.min(this.maxTorqueBarHeight, Math.max(1, Math.abs(Math.round(torque * this.TORQUE_PIXEL_FACTOR))));
-      const torqueBarYPosition = yOffset - Math.round(Math.min(this.maxTorqueBarHeight, Math.max(0, Math.round(torque * this.TORQUE_PIXEL_FACTOR))));
+      torque = parseFloat(torque);
+      if (isNaN(torque)) torque = 0;
+
+      let rawHeight = Math.abs(Math.round(torque * this.TORQUE_PIXEL_FACTOR));
+      if (isNaN(rawHeight) || !isFinite(rawHeight)) rawHeight = 0;
+      const torqueBarHeight = Math.min(this.maxTorqueBarHeight, Math.max(1, rawHeight));
+
+      let rawYPos = Math.round(torque * this.TORQUE_PIXEL_FACTOR);
+      if (isNaN(rawYPos) || !isFinite(rawYPos)) rawYPos = 0;
+      const torqueBarYPosition = yOffset - Math.round(Math.min(this.maxTorqueBarHeight, Math.max(0, rawYPos)));
       let torqueBarBackground = torque > 0 ? { r: 0, g: 255, b: 0, alpha: 0.75 } : { r: 255, g: 0, b: 0, alpha: 0.75 };
 
       return {

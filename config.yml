@@ -16,7 +16,7 @@ complications:
     options:
       xAccelerationDataChannel: Gyro_Movella_Acc_X
       yAccelerationDataChannel: Gyro_Movella_Acc_Y
-      xAccelerationFactor: 0.10193
+      xAccelerationFactor: -0.10193
       yAccelerationFactor: 0.10193
       indicatorSize: 15
       indicatorBufferSize: 10
@@ -64,11 +64,11 @@ complications:
     x: 1600
     y: 15
     options:
-      flTorqueDataChannel: AMK_Torque_FL
-      frTorqueDataChannel: AMK_Torque_FR
-      rlTorqueDataChannel: AMK_Torque_RL
-      rrTorqueDataChannel: AMK_Torque_RR
-      maxTorque: 300
+      flTorqueDataChannel: Inverter_1_Actual_Motor_Torque
+      frTorqueDataChannel: Inverter_4_Actual_Motor_Torque
+      rlTorqueDataChannel: Inverter_2_Actual_Motor_Torque
+      rrTorqueDataChannel: Inverter_3_Actual_Motor_Torque
+      maxTorque: 30
 
   - type: throttleAndBrake 
     width: 300
@@ -108,3 +108,44 @@ complications:
       paddingChar: "0"
       suffix: " km/h"
       color: white
+
+  - type: text
+    width: 700
+    height: 50
+    x: 30
+    y: 800
+    options:
+      signal: SG_EMS_SOC
+      factor: 1
+      digits: 0
+      padding: 3
+      paddingChar: "0"
+      prefix: "SOC "
+      suffix: " %"
+      color: white
+
+  - type: text
+    width: 700
+    height: 50
+    x: 30
+    y: 700
+    options:
+      signal: HV_cell_TMP_MAX
+      factor: 1
+      digits: 0
+      padding: 3
+      paddingChar: "0"
+      prefix: "Temp "
+      suffix: " C"
+      color: white
+
+  - type: timeplot 
+    width: 400
+    height: 100
+    x: 760
+    y: 20
+    options:
+      throttleDataChannel: DCM_APPS_Throttle
+      brakeDataChannel: DCM_Brake_Recu
+      maxThrottle: 100
+      maxBrake: 100

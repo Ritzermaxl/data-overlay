@@ -4,6 +4,7 @@ import throttleAndBrake from "./throttleAndBrake.js";
 import text from "./text.js";
 import rectangle from "./rectangle.js";
 import steeringwheel from "./steeringwheel.js"
+import timeplot from "./timeplot.js";
 
 const complications = {
   acceleration,
@@ -12,6 +13,7 @@ const complications = {
   rectangle,
   throttleAndBrake,
   steeringwheel,
+  timeplot,
 };
 
 export default complications;

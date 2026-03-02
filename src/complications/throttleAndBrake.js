@@ -117,13 +117,20 @@ class complication {
           break;
       }
       let pedalData = dataPoint[dataChannel];
-      if (!pedalData) {
+      if (typeof pedalData === "undefined" || pedalData === null) {
         log.warn(`data channel '${dataChannel}' not found in data point index ${frameIndex}`);
         pedalData = 0;
       }
+      pedalData = parseFloat(pedalData);
+      if (isNaN(pedalData)) pedalData = 0;
       
-      const torqueBarHeight = Math.min(this.maxTorqueBarHeight, Math.max(1, Math.abs(Math.round(pedalData * PixelFactor))));
-      const torqueBarYPosition = yOffset - Math.round(Math.min(this.maxTorqueBarHeight, Math.max(0, Math.round(pedalData * PixelFactor))));
+      let rawHeight = Math.abs(Math.round(pedalData * PixelFactor));
+      if (isNaN(rawHeight) || !isFinite(rawHeight)) rawHeight = 0;
+      const torqueBarHeight = Math.min(this.maxTorqueBarHeight, Math.max(1, rawHeight));
+
+      let rawYPos = Math.round(pedalData * PixelFactor);
+      if (isNaN(rawYPos) || !isFinite(rawYPos)) rawYPos = 0;
+      const torqueBarYPosition = yOffset - Math.round(Math.min(this.maxTorqueBarHeight, Math.max(0, rawYPos)));
       
 
       return {

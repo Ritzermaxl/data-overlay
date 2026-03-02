@@ -9,10 +9,11 @@ let frameIndex = 0;
 
 const configuredComplications = [];
 
-async function init(config, data) {
+async function init(config, data, resumeFrame = 0) {
   _config = config;
+  frameIndex = resumeFrame;  // start where we left off
   const complicationConfigs = config.complications;
-  if (complications.length == 0) {
+  if (!complicationConfigs || complicationConfigs.length === 0) {
     log.error("no complications specified in config file");
     process.exit(1);
   }

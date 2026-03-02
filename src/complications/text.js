@@ -53,8 +53,12 @@ class complication {
   }
 
   async render(dataPoint, frameIndex) {
-    const signal = parseFloat(dataPoint[this.signalDataChannel]) * this.factor;
-    const sign = Math.sign(dataPoint[this.signalDataChannel] * this.factor);
+    let signal = parseFloat(dataPoint[this.signalDataChannel]);
+    if (isNaN(signal)) signal = 0;
+    
+    const sign = Math.sign(signal * this.factor);
+    signal *= this.factor;
+
     const absSignal = Math.abs(signal);
     const fixedSignal = absSignal.toFixed(this.digits);
     let text = `${fixedSignal}`;
