@@ -49,21 +49,28 @@ async function render(dataPoint) {
   for (const configuredComplication of configuredComplications) {
     const complication = configuredComplication.complication;
     const complicationConfig = configuredComplication.complicationConfig;
-    const layer = await complication.render(dataPoint, frameIndex);
     
-    // Ensure we don't pass null layers or invalid objects
-    if (layer) {
-      layers.push({
-        input: layer,
-        top: Math.round(complicationConfig.y),
-        left: Math.round(complicationConfig.x),
-      });
+    try {
+      // log.debug(`Rendering complication ${complicationConfig.type} at frame ${frameIndex}`);
+      const layer = await complication.render(dataPoint, frameIndex);
+      
+      // Ensure we don't pass null layers or invalid objects
+      if (layer) {
+        layers.push({
+          input: layer,
+          top: Math.round(complicationConfig.y),
+          left: Math.round(complicationConfig.x),
+        });
+      }
+    } catch (err) {
+      log.error(`Complication ${complicationConfig.type} failed at frame ${frameIndex}: ${err.message}`);
     }
   }
 
   const outputFilename = path.join(_config.args.out, `${frameIndex.toString().padStart(6, "0")}.png`);
   
   try {
+    // log.debug(`Compositing frame ${frameIndex}`);
     await sharp(backgroundBuffer)
       .composite(layers)
       .toFile(outputFilename);

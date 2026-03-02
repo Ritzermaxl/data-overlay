@@ -1,3 +1,6 @@
+import process from "process";
+process.env.UV_THREADPOOL_SIZE = "1";
+
 import { loadDataFile } from "./data-reader.js";
 import { ArgumentParser } from "argparse";
 import { log } from "./logger.js";
@@ -7,6 +10,7 @@ import sharp from "sharp";
 
 // Enforce strict single-threaded operation and disable unstable optimizations
 sharp.concurrency(1);
+sharp.cache(0);
 sharp.cache(false);
 sharp.simd(false);
 

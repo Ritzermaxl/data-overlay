@@ -51,14 +51,20 @@ class complication {
   }
 
   async render(dataPoint, frameIndex) {
-    let signal = parseFloat(dataPoint[this.signalDataChannel]);
-    if (isNaN(signal)) signal = 0;
+    let rawSignal = parseFloat(dataPoint[this.signalDataChannel]);
+    if (isNaN(rawSignal)) rawSignal = 0;
     
-    const sign = Math.sign(signal * this.factor);
-    signal *= this.factor;
+    // Safety check for extreme values that might crash toFixed()
+    if (Math.abs(rawSignal) > 1e15) rawSignal = Math.sign(rawSignal) * 1e15;
+    
+    const signal = rawSignal * this.factor;
+    const sign = Math.sign(signal);
 
     const absSignal = Math.abs(signal);
-    const fixedSignal = absSignal.toFixed(this.digits);
+    
+    // Safety check for digits
+    const digits = Math.max(0, Math.min(20, this.digits || 0));
+    const fixedSignal = absSignal.toFixed(digits);
     let textStr = `${fixedSignal}`;
     if (this.padding && this.paddingChar) {
       textStr = textStr.padStart(this.padding, this.paddingChar);
@@ -70,6 +76,11 @@ class complication {
     }
     if (this.prefix) textStr = `${this.prefix}${textStr}`;
     if (this.suffix) textStr = `${textStr}${this.suffix}`;
+
+    // Safety: limit maximum text length to prevent Pango crashes
+    if (textStr.length > 50) {
+        textStr = textStr.substring(0, 50);
+    }
 
     // Cache lookup
     if (this.cache.has(textStr)) {
