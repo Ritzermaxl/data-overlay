@@ -22,6 +22,9 @@ class complication {
 
     this.TORQUE_PIXEL_FACTOR;
     this.maxTorqueBarHeight;
+    
+    this.greenBarBuffer;
+    this.redBarBuffer;
   }
 
   async init(config, data) {
@@ -59,31 +62,18 @@ class complication {
     this.maxTorque = config.options.maxTorque;
     let maxDataTorque = 0;
     for (const dataPoint of data) {
-      const torqueFl = Math.abs(dataPoint[this.flTorqueDataChannel]);
-      const torqueFr = Math.abs(dataPoint[this.frTorqueDataChannel]);
-      const torqueRl = Math.abs(dataPoint[this.rlTorqueDataChannel]);
-      const torqueRr = Math.abs(dataPoint[this.rrTorqueDataChannel]);
-
-      const maxTorque = Math.max(torqueFl, torqueFr, torqueRl, torqueRr);
-      if (maxTorque > maxDataTorque) {
-        maxDataTorque = maxTorque;
-      }
+      const torqueFl = Math.abs(parseFloat(dataPoint[this.flTorqueDataChannel]) || 0);
+      const torqueFr = Math.abs(parseFloat(dataPoint[this.frTorqueDataChannel]) || 0);
+      const torqueRl = Math.abs(parseFloat(dataPoint[this.rlTorqueDataChannel]) || 0);
+      const torqueRr = Math.abs(parseFloat(dataPoint[this.rrTorqueDataChannel]) || 0);
+      maxDataTorque = Math.max(maxDataTorque, torqueFl, torqueFr, torqueRl, torqueRr);
     }
-    if (this.maxTorque) {
-      log.debug(`max torque: ${this.maxTorque} | max data torque: ${maxDataTorque}`);
-      if (maxDataTorque > this.maxTorque) {
-        log.warn(`max absolute torque in data (${maxDataTorque}) is greater than configured max torque (${this.maxTorque})`);
-      }
-    } else {
-      this.maxTorque = Math.ceil(maxDataTorque);
-      log.info(`setting max torque to ${this.maxTorque} based on data`);
-    }
+    this.maxTorque = this.maxTorque || Math.ceil(maxDataTorque) || 1;
 
     const ORIGINAL_MAX_TORUQE_BAR_HEIGHT = 200;
     this.maxTorqueBarHeight = Math.round(Y_SCALE_FACTOR * ORIGINAL_MAX_TORUQE_BAR_HEIGHT);
     this.TORQUE_PIXEL_FACTOR = (1 / this.maxTorque) * Y_SCALE_FACTOR * ORIGINAL_MAX_TORUQE_BAR_HEIGHT;
 
-    // Pre-create bar buffers
     this.greenBarBuffer = await sharp({
       create: {
         width: Math.max(1, this.wheelWidth),
@@ -91,9 +81,7 @@ class complication {
         channels: 4,
         background: { r: 0, g: 255, b: 0, alpha: 0.75 },
       },
-    })
-    .png()
-    .toBuffer();
+    }).png().toBuffer();
 
     this.redBarBuffer = await sharp({
       create: {
@@ -102,85 +90,37 @@ class complication {
         channels: 4,
         background: { r: 255, g: 0, b: 0, alpha: 0.75 },
       },
-    })
-    .png()
-    .toBuffer();
+    }).png().toBuffer();
 
     log.info(`complication 'torque-vectoring' initialized`);
   }
 
   async render(dataPoint, frameIndex) {
     const torqueLayer = async (wheel) => {
-      let dataChannel = "";
-      let xOffset = 0;
-      let yOffset = 0;
+      let dataChannel, xOffset, yOffset;
       switch (wheel) {
-        case "fl":
-          dataChannel = this.flTorqueDataChannel;
-          xOffset = this.leftWheelStart;
-          yOffset = this.frontAxleYOffset;
-          break;
-        case "fr":
-          dataChannel = this.frTorqueDataChannel;
-          xOffset = this.rightWheelStart;
-          yOffset = this.frontAxleYOffset;
-          break;
-        case "rl":
-          dataChannel = this.rlTorqueDataChannel;
-          xOffset = this.leftWheelStart;
-          yOffset = this.rearAxleYOffset;
-          break;
-        case "rr":
-          dataChannel = this.rrTorqueDataChannel;
-          xOffset = this.rightWheelStart;
-          yOffset = this.rearAxleYOffset;
-          break;
+        case "fl": dataChannel = this.flTorqueDataChannel; xOffset = this.leftWheelStart; yOffset = this.frontAxleYOffset; break;
+        case "fr": dataChannel = this.frTorqueDataChannel; xOffset = this.rightWheelStart; yOffset = this.frontAxleYOffset; break;
+        case "rl": dataChannel = this.rlTorqueDataChannel; xOffset = this.leftWheelStart; yOffset = this.rearAxleYOffset; break;
+        case "rr": dataChannel = this.rrTorqueDataChannel; xOffset = this.rightWheelStart; yOffset = this.rearAxleYOffset; break;
       }
-      let torque = dataPoint[dataChannel];
-      if (typeof torque === "undefined" || torque === null) {
-        log.warn(`data channel '${dataChannel}' not found in data point index ${frameIndex}`);
-        torque = 0;
-      }
-      torque = parseFloat(torque);
-      if (isNaN(torque)) torque = 0;
-
-      let rawHeight = Math.abs(Math.round(torque * this.TORQUE_PIXEL_FACTOR));
-      if (isNaN(rawHeight) || !isFinite(rawHeight)) rawHeight = 0;
-      const torqueBarHeight = Math.max(1, Math.min(this.maxTorqueBarHeight, rawHeight));
-
-      let rawYPos = Math.round(torque * this.TORQUE_PIXEL_FACTOR);
-      if (isNaN(rawYPos) || !isFinite(rawYPos)) rawYPos = 0;
+      let torque = parseFloat(dataPoint[dataChannel]) || 0;
+      let h = Math.abs(Math.round(torque * this.TORQUE_PIXEL_FACTOR));
+      const barHeight = Math.max(1, Math.min(this.maxTorqueBarHeight, h));
+      let top = (torque >= 0) ? (yOffset - barHeight) : yOffset;
       
-      // Calculate top position and clamp it
-      let top = yOffset - Math.min(this.maxTorqueBarHeight, Math.max(0, rawYPos));
-      top = Math.max(0, Math.min(this.height - torqueBarHeight, top));
-      
-      const left = Math.max(0, Math.min(this.width - this.wheelWidth, xOffset));
-
       const barBuffer = torque > 0 ? this.greenBarBuffer : this.redBarBuffer;
-      const resizedBar = await sharp(barBuffer)
-        .extract({ left: 0, top: 0, width: Math.max(1, this.wheelWidth), height: torqueBarHeight })
-        .toBuffer();
+      const extracted = await sharp(barBuffer).extract({ left: 0, top: 0, width: Math.max(1, this.wheelWidth), height: barHeight }).toBuffer();
 
       return {
-        input: resizedBar,
+        input: extracted,
         top: Math.round(top),
-        left: Math.round(left),
+        left: Math.round(xOffset),
       };
     };
 
-    const layerPromises = [
-        torqueLayer("fl"),
-        torqueLayer("fr"),
-        torqueLayer("rl"),
-        torqueLayer("rr"),
-    ];
-    const layers = await Promise.all(layerPromises);
-
-    // console.log(Math.max(1, Math.abs(Math.round(dataPoint[flTorqueDataChannel] * TORQUE_PIXEL_FACTOR))));
-    return await sharp(this.backgroundImageBuffer)
-      .composite(layers)
-      .toBuffer();
+    const layers = await Promise.all([torqueLayer("fl"), torqueLayer("fr"), torqueLayer("rl"), torqueLayer("rr")]);
+    return await sharp(this.backgroundImageBuffer).composite(layers).png().toBuffer();
   }
 }
 

@@ -13,53 +13,18 @@ class complication {
 
     this.history = [];
     this.maxHistorySeconds = 10;
+    this.timeDataChannel = "timestamps";
   }
 
   async init(config, data) {
     log.info(`initializing complication 'timeplot'`);
-
     this.width = config.width;
     this.height = config.height;
-
     this.timeDataChannel = config.options.timeDataChannel || "timestamps";
     this.throttleDataChannel = config.options.throttleDataChannel;
     this.brakeDataChannel = config.options.brakeDataChannel;
-
     this.maxThrottle = config.options.maxThrottle || 1;
     this.maxBrake = config.options.maxBrake || 1;
-
-    let maxDataThrottle = 0;
-    let maxDataBrake = 0;
-    for (const dataPoint of data) {
-      const throttle = parseFloat(dataPoint[this.throttleDataChannel]) || 0;
-      const brake = parseFloat(dataPoint[this.brakeDataChannel]) || 0;
-
-      if (throttle > maxDataThrottle) {
-        maxDataThrottle = throttle;
-      }
-      if (brake > maxDataBrake) {
-        maxDataBrake = brake;
-      }
-    }
-
-    if (config.options.maxThrottle) {
-      log.debug(`max throttle: ${this.maxThrottle} | max data throttle: ${maxDataThrottle}`);
-      if (maxDataThrottle > this.maxThrottle) {
-        log.warn(`max throttle in data (${maxDataThrottle}) is greater than configured max throttle (${this.maxThrottle})`);
-      }
-    } else {
-      log.info(`setting max throttle to 1, since no max throttle configured`);
-    }
-
-    if (config.options.maxBrake) {
-      log.debug(`max brake: ${this.maxBrake} | max data brake: ${maxDataBrake}`);
-      if (maxDataBrake > this.maxBrake) {
-        log.warn(`max brake in data (${maxDataBrake}) is greater than configured max brake (${this.maxBrake})`);
-      }
-    } else {
-      log.info(`setting max brake to 1, since no max brake configured`);
-    }
-
     log.info(`complication 'timeplot' initialized`);
   }
 
@@ -69,35 +34,25 @@ class complication {
     const brakeValue = parseFloat(dataPoint[this.brakeDataChannel]) || 0;
 
     this.history.push({ time: currentTime, throttle: throttleValue, brake: brakeValue });
-
     const tenSecondsAgo = currentTime - this.maxHistorySeconds;
     this.history = this.history.filter(p => p.time >= tenSecondsAgo);
 
     const throttlePoints = this.history.map(p => {
       const x = Math.round(((p.time - tenSecondsAgo) / this.maxHistorySeconds) * this.width);
-      let yValue = (p.throttle / this.maxThrottle);
-      if (isNaN(yValue) || !isFinite(yValue)) yValue = 0;
-      const y = Math.round(this.height - yValue * this.height);
+      let yVal = p.throttle / this.maxThrottle;
+      const y = Math.round(this.height - (isNaN(yVal) ? 0 : yVal) * this.height);
       return { x, y };
-    }).filter(p => !isNaN(p.x) && isFinite(p.x) && !isNaN(p.y) && isFinite(p.y));
+    }).filter(p => !isNaN(p.x) && isFinite(p.x));
 
     const brakePoints = this.history.map(p => {
       const x = Math.round(((p.time - tenSecondsAgo) / this.maxHistorySeconds) * this.width);
-      let yValue = (p.brake / this.maxBrake);
-      if (isNaN(yValue) || !isFinite(yValue)) yValue = 0;
-      const y = Math.round(this.height - yValue * this.height);
+      let yVal = p.brake / this.maxBrake;
+      const y = Math.round(this.height - (isNaN(yVal) ? 0 : yVal) * this.height);
       return { x, y };
-    }).filter(p => !isNaN(p.x) && isFinite(p.x) && !isNaN(p.y) && isFinite(p.y));
+    }).filter(p => !isNaN(p.x) && isFinite(p.x));
 
-    let throttleSvgPath = "";
-    if (throttlePoints.length > 0) {
-        throttleSvgPath = `M ${throttlePoints.map(p => `${p.x},${p.y}`).join(' L ')}`;
-    }
-    
-    let brakeSvgPath = "";
-    if (brakePoints.length > 0) {
-        brakeSvgPath = `M ${brakePoints.map(p => `${p.x},${p.y}`).join(' L ')}`;
-    }
+    let throttleSvgPath = throttlePoints.length > 0 ? `M ${throttlePoints.map(p => `${p.x},${p.y}`).join(' L ')}` : "";
+    let brakeSvgPath = brakePoints.length > 0 ? `M ${brakePoints.map(p => `${p.x},${p.y}`).join(' L ')}` : "";
 
     const svg = `
       <svg width="${this.width}" height="${this.height}">
@@ -106,9 +61,7 @@ class complication {
       </svg>
     `;
 
-    return await sharp(Buffer.from(svg))
-      .png()
-      .toBuffer();
+    return await sharp(Buffer.from(svg)).png().toBuffer();
   }
 }
 

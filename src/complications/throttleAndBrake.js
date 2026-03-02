@@ -12,7 +12,6 @@ class complication {
     this.maxThrottle;
     this.maxBrake;
 
-    this.rearAxleYOffset = 0;
     this.frontAxleYOffset = 0;
     this.leftWheelStart = 0;
     this.rightWheelStart = 0;
@@ -21,11 +20,13 @@ class complication {
     this.TORQUE_PIXEL_FACTOR_THROTTLE;
     this.TORQUE_PIXEL_FACTOR_BRAKE;
     this.maxTorqueBarHeight;
+
+    this.greenBarBuffer;
+    this.redBarBuffer;
   }
 
   async init(config, data) {
     log.info(`initializing complication 'throttle-and-brake'`);
-
     this.width = config.width;
     this.height = config.height;
 
@@ -43,54 +44,16 @@ class complication {
     this.leftWheelStart = Math.round(X_SCALE_FACTOR * ORIGINAL_LEFT_WHEEL_START);
     this.rightWheelStart = Math.round(X_SCALE_FACTOR * ORIGINAL_RIGHT_WHEEL_START);
 
-  
-
-
     this.throttleDataChannel = config.options.throttleDataChannel;
     this.brakeDataChannel = config.options.brakeDataChannel;
-
-    this.maxThrottle = config.options.maxThrottle;
-    this.maxBrake = config.options.maxBrake;
-    let maxDataThrottlePedal = 0;
-    let maxDataBrakePedal = 0;
-    for (const dataPoint of data) {
-      const pedalThrottle = dataPoint[this.throttleDataChannel];
-      const pedalBrake = dataPoint[this.brakeDataChannel];
-
-      if (pedalThrottle > maxDataThrottlePedal) {
-        maxDataThrottlePedal = pedalThrottle;
-      }
-      if (pedalBrake > maxDataBrakePedal) {
-        maxDataBrakePedal = pedalBrake;
-      }
-    }
-    
-    if (this.maxThrottle) {
-      log.debug(`max throttle: ${this.maxThrottle} | max data throttle: ${maxDataThrottlePedal}`);
-      if (maxDataThrottlePedal > this.maxThrottle) {
-        log.warn(`max throttle in data (${maxDataThrottlePedal}) is greater than configured max throttle (${this.maxThrottle})`);
-      }
-    } else {
-      this.maxThrottle = 1;
-      log.info(`setting max throttle to 1, since no max throttle configured`);
-    }
-
-    if (this.maxBrake) {
-      log.debug(`max brake: ${this.maxBrake} | max data brake: ${maxDataBrakePedal}`);
-      if (maxDataBrakePedal > this.maxBrake) {
-        log.warn(`max brake in data (${maxDataBrakePedal}) is greater than configured max brake (${this.maxBrake})`);
-      }
-    } else {
-      this.maxBrake = 1;
-      log.info(`setting max brake to 1, since no max brake configured`);
-    }
+    this.maxThrottle = config.options.maxThrottle || 1;
+    this.maxBrake = config.options.maxBrake || 1;
 
     const ORIGINAL_MAX_TORUQE_BAR_HEIGHT = 200;
     this.maxTorqueBarHeight = Math.round(Y_SCALE_FACTOR * ORIGINAL_MAX_TORUQE_BAR_HEIGHT);
     this.TORQUE_PIXEL_FACTOR_THROTTLE = (1 / this.maxThrottle) * Y_SCALE_FACTOR * ORIGINAL_MAX_TORUQE_BAR_HEIGHT;
     this.TORQUE_PIXEL_FACTOR_BRAKE = (1 / this.maxBrake) * Y_SCALE_FACTOR * ORIGINAL_MAX_TORUQE_BAR_HEIGHT;
 
-    // Pre-create bar buffers
     this.greenBarBuffer = await sharp({
       create: {
         width: Math.max(1, this.wheelWidth),
@@ -98,9 +61,7 @@ class complication {
         channels: 4,
         background: { r: 0, g: 255, b: 0, alpha: 0.75 },
       },
-    })
-    .png()
-    .toBuffer();
+    }).png().toBuffer();
 
     this.redBarBuffer = await sharp({
       create: {
@@ -109,85 +70,38 @@ class complication {
         channels: 4,
         background: { r: 255, g: 0, b: 0, alpha: 0.75 },
       },
-    })
-    .png()
-    .toBuffer();
+    }).png().toBuffer();
 
     log.info(`complication 'throttle-and-brake' initialized`);
   }
 
   async render(dataPoint, frameIndex) {
     const pedalLayer = async (pedal) => {
-      let dataChannel = "";
-      let xOffset = 0;
-      let yOffset = 0;
-      let PixelFactor = 0;
-      let barBuffer = this.redBarBuffer;
-      switch (pedal) {
-        case "throttle":
-          dataChannel = this.throttleDataChannel;
-          xOffset = this.rightWheelStart;
-          yOffset = this.frontAxleYOffset;
-          barBuffer = this.greenBarBuffer;
-          PixelFactor = this.TORQUE_PIXEL_FACTOR_THROTTLE;
-          break;
-        case "brake":
-          dataChannel = this.brakeDataChannel;
-          xOffset = this.leftWheelStart;
-          yOffset = this.frontAxleYOffset;
-          barBuffer = this.redBarBuffer;
-          PixelFactor = this.TORQUE_PIXEL_FACTOR_BRAKE;
-          break;
+      let dataChannel, xOffset, PixelFactor, barBuffer;
+      if (pedal === "throttle") {
+        dataChannel = this.throttleDataChannel; xOffset = this.rightWheelStart; PixelFactor = this.TORQUE_PIXEL_FACTOR_THROTTLE; barBuffer = this.greenBarBuffer;
+      } else {
+        dataChannel = this.brakeDataChannel; xOffset = this.leftWheelStart; PixelFactor = this.TORQUE_PIXEL_FACTOR_BRAKE; barBuffer = this.redBarBuffer;
       }
-      let pedalData = dataPoint[dataChannel];
-      if (typeof pedalData === "undefined" || pedalData === null) {
-        log.warn(`data channel '${dataChannel}' not found in data point index ${frameIndex}`);
-        pedalData = 0;
-      }
-      pedalData = parseFloat(pedalData);
-      if (isNaN(pedalData)) pedalData = 0;
       
-      let rawHeight = Math.abs(Math.round(pedalData * PixelFactor));
-      if (isNaN(rawHeight) || !isFinite(rawHeight)) rawHeight = 0;
-      const torqueBarHeight = Math.max(1, Math.min(this.maxTorqueBarHeight, rawHeight));
+      let val = parseFloat(dataPoint[dataChannel]) || 0;
+      let h = Math.abs(Math.round(val * PixelFactor));
+      const barHeight = Math.max(1, Math.min(this.maxTorqueBarHeight, h));
+      let top = (val >= 0) ? (this.frontAxleYOffset - barHeight) : this.frontAxleYOffset;
 
-      let rawYPos = Math.round(pedalData * PixelFactor);
-      if (isNaN(rawYPos) || !isFinite(rawYPos)) rawYPos = 0;
-      
-      // Calculate top position and clamp it
-      let top = yOffset - Math.min(this.maxTorqueBarHeight, Math.max(0, rawYPos));
-      top = Math.max(0, Math.min(this.height - torqueBarHeight, top));
-      
-      const left = Math.max(0, Math.min(this.width - this.wheelWidth, xOffset));
-
-      const resizedBar = await sharp(barBuffer)
-        .extract({ left: 0, top: 0, width: Math.max(1, this.wheelWidth), height: torqueBarHeight })
-        .toBuffer();
+      const extracted = await sharp(barBuffer).extract({ left: 0, top: 0, width: Math.max(1, this.wheelWidth), height: barHeight }).toBuffer();
 
       return {
-        input: resizedBar,
+        input: extracted,
         top: Math.round(top),
-        left: Math.round(left),
+        left: Math.round(xOffset),
       };
     };
 
-    const layerPromises = [
-        pedalLayer("throttle"),
-        pedalLayer("brake"),
-    ];
-    const layers = await Promise.all(layerPromises);
-
+    const layers = await Promise.all([pedalLayer("throttle"), pedalLayer("brake")]);
     return await sharp({
-      create: {
-        width: this.width,
-        height: this.height,
-        channels: 4,
-        background: { r: 255, g: 255, b: 255, alpha: 0.0 },
-      },
-    })
-      .png()
-      .composite(layers)
-      .toBuffer();
+      create: { width: this.width, height: this.height, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0 } },
+    }).composite(layers).png().toBuffer();
   }
 }
 

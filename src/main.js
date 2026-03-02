@@ -8,11 +8,11 @@ import { loadConfig, createOutputDirectory } from "./util.js";
 import renderer from "./renderer.js";
 import sharp from "sharp";
 
-// Enforce strict single-threaded operation and disable unstable optimizations
+// Enforce strict single-threaded operation and enable hardware acceleration
 sharp.concurrency(1);
 sharp.cache(0);
 sharp.cache(false);
-sharp.simd(false);
+sharp.simd(true);
 
 const parser = new ArgumentParser({
   description: "data to image overlay",
@@ -23,6 +23,7 @@ parser.add_argument("-c", "--config", { help: "config yaml file" });
 parser.add_argument("-o", "--out", { help: "output directory" });
 parser.add_argument("--frame-offset", { type: "int", help: "frame offset", default: 0 });
 parser.add_argument("--resume", { type: "int", help: "resume from frame index", default: 0 });
+parser.add_argument("--limit", { type: "int", help: "limit number of frames to render", default: 0 });
 
 
 const args = parser.parse_args();
@@ -58,10 +59,19 @@ async function main() {
   }
 
   // Now actually render, skipping until resume index
+  let framesRendered = 0;
   for (let [i, dataPoint] of data.entries()) {
     if (i < args.resume) continue;
+    
+    // Check limit
+    if (args.limit > 0 && framesRendered >= args.limit) {
+      log.info(`reached frame limit of ${args.limit}, stopping`);
+      break;
+    }
+
     try {
       await renderer.render(dataPoint);
+      framesRendered++;
     } catch (err) {
       log.error(`failed rendering frame ${i}: ${err.message}`);
       // optionally continue instead of crashing:

@@ -23,7 +23,6 @@ class complication {
     this.fontFile;
     this.font;
     
-    // Simple cache to avoid recreating identical text buffers
     this.cache = new Map();
   }
 
@@ -54,35 +53,26 @@ class complication {
     let rawSignal = parseFloat(dataPoint[this.signalDataChannel]);
     if (isNaN(rawSignal)) rawSignal = 0;
     
-    // Safety check for extreme values that might crash toFixed()
     if (Math.abs(rawSignal) > 1e15) rawSignal = Math.sign(rawSignal) * 1e15;
     
     const signal = rawSignal * this.factor;
     const sign = Math.sign(signal);
-
     const absSignal = Math.abs(signal);
     
-    // Safety check for digits
     const digits = Math.max(0, Math.min(20, this.digits || 0));
     const fixedSignal = absSignal.toFixed(digits);
     let textStr = `${fixedSignal}`;
     if (this.padding && this.paddingChar) {
       textStr = textStr.padStart(this.padding, this.paddingChar);
     }
-    if (sign >= 0) {
-      textStr = `+${textStr}`;
-    } else {
-      textStr = `-${textStr}`;
-    }
+    if (sign >= 0) textStr = `+${textStr}`;
+    else textStr = `-${textStr}`;
+    
     if (this.prefix) textStr = `${this.prefix}${textStr}`;
     if (this.suffix) textStr = `${textStr}${this.suffix}`;
 
-    // Safety: limit maximum text length to prevent Pango crashes
-    if (textStr.length > 50) {
-        textStr = textStr.substring(0, 50);
-    }
+    if (textStr.length > 50) textStr = textStr.substring(0, 50);
 
-    // Cache lookup
     if (this.cache.has(textStr)) {
       return this.cache.get(textStr);
     }
@@ -99,22 +89,15 @@ class complication {
           font: this.font,
           fontfile: this.fontFile,
         },
-      })
-      .png()
-      .toBuffer();
+      }).png().toBuffer();
       
-      // Limit cache size
       if (this.cache.size < 1000) {
         this.cache.set(textStr, buffer);
       }
-      
       return buffer;
     } catch (err) {
       log.error(`Text rendering failed for "${textStr}": ${err.message}`);
-      // Return empty 1x1 transparent buffer as fallback
-      return await sharp({
-        create: { width: 1, height: 1, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } }
-      }).png().toBuffer();
+      return null;
     }
   }
 }

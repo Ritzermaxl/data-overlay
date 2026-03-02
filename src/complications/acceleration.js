@@ -6,7 +6,6 @@ import path from "path";
 class complication {
   constructor() {
     this.gForceBackgroundBuffer;
-    this.gForceIndicatorBuffer;
     this.indicatorSize;
     this.width;
     this.height;
@@ -21,6 +20,8 @@ class complication {
     this.indicatorBufferSize = 10;
     this.indicatorBufferIndex = 0;
     this.indicatorBufferFalloff = 0.9;
+    
+    this.blurredIndicatorBuffers = [];
   }
 
   async init(config, data) {
@@ -37,97 +38,55 @@ class complication {
     this.yAccelerationFactor = config.options.yAccelerationFactor || 1.0;
     this.indicatorBufferSize = config.options.indicatorBufferSize || 1;
     this.indicatorBufferFalloff = config.options.indicatorBufferFalloff || 1.0;
-    if (typeof this.xAccelerationDataChannel === "undefined" || typeof this.yAccelerationDataChannel === "undefined") {
-      log.error(
-        `xAccelerationDataChannel and yAccelerationDataChannel must be specified for g-force complication. Define under complication options in config file.`
-      );
-      process.exit(1);
-    }
 
     this.indicatorSize = config.options.indicatorSize || 50;
 
-    const ORIGINAL_BACKGROUND_IMAGE_SIZE = 950; // 950px X 950px
-    const ORIGINAL_1_G_PIXEL_COUNT = 150; // 1g circle diameter is 300px => 150px radius = 1g
+    const ORIGINAL_BACKGROUND_IMAGE_SIZE = 950;
+    const ORIGINAL_1_G_PIXEL_COUNT = 150;
     this.gForcePixelCount = ORIGINAL_1_G_PIXEL_COUNT * (this.width / ORIGINAL_BACKGROUND_IMAGE_SIZE);
 
     const backgroundImageBuffer = await loadImageBuffer("./assets/g-force-bg.png");
     const indicatorImageBuffer = await loadImageBuffer("./assets/g-force-indicator.png");
-    log.info(`initializing complication 'acceleration'`);
-    log.debug(`complication size: ${this.width}x${this.height}`);
-    this.gForceBackgroundBuffer = await sharp(backgroundImageBuffer).resize(this.width, this.height).toBuffer();
-    log.debug(`indicator size: ${this.indicatorSize}x${this.indicatorSize}`);
-    this.gForceIndicatorBuffer = await sharp(indicatorImageBuffer).resize(this.indicatorSize, this.indicatorSize).toBuffer();
 
-    // Pre-calculate blurred indicator buffers
-    this.blurredIndicatorBuffers = [this.gForceIndicatorBuffer];
-    for (let i = 1; i < this.indicatorBufferSize; i++) {
-      const sigma = Math.max(0.3, i * this.indicatorBufferFalloff);
-      const blurred = await sharp(this.gForceIndicatorBuffer)
-        .blur(sigma)
-        .toBuffer();
-      this.blurredIndicatorBuffers.push(blurred);
+    this.gForceBackgroundBuffer = await sharp(backgroundImageBuffer).resize(this.width, this.height).toBuffer();
+
+    const baseIndicator = await sharp(indicatorImageBuffer).resize(this.indicatorSize, this.indicatorSize).toBuffer();
+    this.blurredIndicatorBuffers = [];
+    for (let i = 0; i < this.indicatorBufferSize; i++) {
+      let s = sharp(baseIndicator);
+      if (i > 0) s = s.blur(Math.max(0.3, i * this.indicatorBufferFalloff));
+      this.blurredIndicatorBuffers.push(await s.toBuffer());
     }
 
     log.info(`complication 'acceleration' initialized`);
   }
 
   async render(dataPoint, frameIndex) {
-    let xAcceleration = dataPoint[this.xAccelerationDataChannel];
-    let yAcceleration = dataPoint[this.yAccelerationDataChannel];
-    if (typeof xAcceleration === "undefined") {
-      log.warn(`data point at frame ${frameIndex} misses xAcceleration data`);
-      xAcceleration = 0;
-    }
-    if (typeof yAcceleration === "undefined") {
-      log.warn(`data point at frame index ${frameIndex} misses yAcceleration data`);
-      yAcceleration = 0;
-    }
+    let xAcc = (parseFloat(dataPoint[this.xAccelerationDataChannel]) || 0) * this.xAccelerationFactor;
+    let yAcc = (parseFloat(dataPoint[this.yAccelerationDataChannel]) || 0) * this.yAccelerationFactor;
 
-    xAcceleration = parseFloat(xAcceleration);
-    yAcceleration = parseFloat(yAcceleration);
-    if (isNaN(xAcceleration)) xAcceleration = 0;
-    if (isNaN(yAcceleration)) yAcceleration = 0;
-    
-    xAcceleration *= this.xAccelerationFactor;
-    yAcceleration *= this.yAccelerationFactor;
+    const indicatorX = Math.max(0, Math.min(this.width - this.indicatorSize, Math.round(this.width / 2 - this.indicatorSize / 2 - yAcc * this.gForcePixelCount)));
+    const indicatorY = Math.max(0, Math.min(this.height - this.indicatorSize, Math.round(this.height / 2 - this.indicatorSize / 2 + xAcc * this.gForcePixelCount)));
 
-    const indicatorXPosition = Math.max(0, Math.min(this.width - this.indicatorSize, Math.round(this.width / 2 - this.indicatorSize / 2 - yAcceleration * this.gForcePixelCount)));
-    const indicatorYPosition = Math.max(0, Math.min(this.height - this.indicatorSize, Math.round(this.height / 2 - this.indicatorSize / 2 + xAcceleration * this.gForcePixelCount)));
-
-    this.indicatorBuffer[this.indicatorBufferIndex % this.indicatorBufferSize] = { 
-      indicatorXPosition: isNaN(indicatorXPosition) ? 0 : indicatorXPosition, 
-      indicatorYPosition: isNaN(indicatorYPosition) ? 0 : indicatorYPosition 
-    };
+    this.indicatorBuffer[this.indicatorBufferIndex % this.indicatorBufferSize] = { indicatorX, indicatorY };
 
     let indicators = [];
     for (let i = 0; i < this.indicatorBuffer.length; i++) {
-      const indicator = this.indicatorBuffer[(this.indicatorBufferIndex + i) % this.indicatorBuffer.length];
-      const indicatorImageBuffer = this.blurredIndicatorBuffers[i] || this.gForceIndicatorBuffer;
-      
+      const pos = this.indicatorBuffer[(this.indicatorBufferIndex + i) % this.indicatorBuffer.length];
       indicators.push({
-        input: indicatorImageBuffer,
-        left: indicator.indicatorXPosition,
-        top: indicator.indicatorYPosition,
+        input: this.blurredIndicatorBuffers[i] || this.blurredIndicatorBuffers[0],
+        left: pos.indicatorX,
+        top: pos.indicatorY,
       });
     }
     this.indicatorBufferIndex = (this.indicatorBufferIndex + 1) % this.indicatorBufferSize;
 
     return await sharp({
-      create: {
-        width: this.width,
-        height: this.height,
-        channels: 4,
-        background: { r: 255, g: 255, b: 255, alpha: 0.0 },
-      },
+      create: { width: this.width, height: this.height, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0 } },
     })
-      .png()
-      .composite([
-        {
-          input: this.gForceBackgroundBuffer,
-        },
-        ...indicators,
-      ])
-      .toBuffer();
+    .composite([{ input: this.gForceBackgroundBuffer }, ...indicators])
+    .png()
+    .toBuffer();
   }
 }
 

@@ -3,7 +3,6 @@ import { log } from "./logger.js";
 import sharp from "sharp";
 import path from "path";
 
-let backgroundBuffer;
 let _config;
 let frameIndex = 0; 
 
@@ -13,18 +12,6 @@ async function init(config, data, resumeFrame = 0) {
   _config = config;
   frameIndex = resumeFrame;  // start where we left off
   
-  // Pre-calculate the base transparent background buffer
-  backgroundBuffer = await sharp({
-    create: {
-      width: _config.videoWidth,
-      height: _config.videoHeight,
-      channels: 4,
-      background: { r: 255, g: 255, b: 255, alpha: 0.0 },
-    },
-  })
-  .png()
-  .toBuffer();
-
   const complicationConfigs = config.complications;
   if (!complicationConfigs || complicationConfigs.length === 0) {
     log.error("no complications specified in config file");
@@ -43,44 +30,44 @@ async function init(config, data, resumeFrame = 0) {
 }
 
 async function render(dataPoint) {
-  const layers = [];
-  
-  // Process complications serially to prevent native concurrency issues
-  for (const configuredComplication of configuredComplications) {
+  const layerPromises = configuredComplications.map(async (configuredComplication) => {
     const complication = configuredComplication.complication;
     const complicationConfig = configuredComplication.complicationConfig;
-    
-    try {
-      // log.debug(`Rendering complication ${complicationConfig.type} at frame ${frameIndex}`);
-      const layer = await complication.render(dataPoint, frameIndex);
-      
-      // Ensure we don't pass null layers or invalid objects
-      if (layer) {
-        layers.push({
-          input: layer,
-          top: Math.round(complicationConfig.y),
-          left: Math.round(complicationConfig.x),
-        });
-      }
-    } catch (err) {
-      log.error(`Complication ${complicationConfig.type} failed at frame ${frameIndex}: ${err.message}`);
-    }
-  }
+    const layer = await complication.render(dataPoint, frameIndex);
+    if (!layer) return null;
+    return {
+      input: layer,
+      top: Math.round(complicationConfig.y),
+      left: Math.round(complicationConfig.x),
+    };
+  });
+
+  const layers = (await Promise.all(layerPromises)).filter(l => l !== null);
 
   const outputFilename = path.join(_config.args.out, `${frameIndex.toString().padStart(6, "0")}.png`);
   
   try {
-    // log.debug(`Compositing frame ${frameIndex}`);
-    await sharp(backgroundBuffer)
+    await sharp({
+      create: {
+        width: _config.videoWidth,
+        height: _config.videoHeight,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 0.0 },
+      },
+    })
       .composite(layers)
+      .png({ compressionLevel: 1 })
       .toFile(outputFilename);
   } catch (err) {
     log.error(`Sharp compositor failed at frame ${frameIndex}: ${err.message}`);
-    // Atomic fallback: skip this frame but don't crash
     return;
   }
 
-  log.info(`rendered frame ${frameIndex}/${_config.dataLength}`);
+  if (frameIndex % 100 === 0) {
+    log.info(`rendered frame ${frameIndex}/${_config.dataLength}`);
+  } else {
+    process.stdout.write(`rendered frame ${frameIndex}/${_config.dataLength}\n`);
+  }
   frameIndex++;
 }
 
