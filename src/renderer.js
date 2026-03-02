@@ -3,6 +3,11 @@ import { log } from "./logger.js";
 import sharp from "sharp";
 import path from "path";
 
+sharp.concurrency(0);
+sharp.cache(0);
+sharp.cache(false);
+sharp.simd(false);
+
 let backgroundBuffer;
 let _config;
 let frameIndex = 0; 
@@ -12,6 +17,19 @@ const configuredComplications = [];
 async function init(config, data, resumeFrame = 0) {
   _config = config;
   frameIndex = resumeFrame;  // start where we left off
+  
+  // Pre-calculate the base transparent background buffer
+  backgroundBuffer = await sharp({
+    create: {
+      width: _config.videoWidth,
+      height: _config.videoHeight,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 0.0 },
+    },
+  })
+  .png()
+  .toBuffer();
+
   const complicationConfigs = config.complications;
   if (!complicationConfigs || complicationConfigs.length === 0) {
     log.error("no complications specified in config file");
@@ -45,16 +63,10 @@ async function render(dataPoint) {
   const layers = await Promise.all(layerPromises);
 
   const outputFilename = path.join(_config.args.out, `${frameIndex.toString().padStart(6, "0")}.png`);
-  await sharp({
-    create: {
-      width: _config.videoWidth,
-      height: _config.videoHeight,
-      channels: 4,
-      background: { r: 255, g: 255, b: 255, alpha: 0.0 },
-    },
-  })
-  .composite(layers)
-  .toFile(outputFilename);
+  
+  await sharp(backgroundBuffer)
+    .composite(layers)
+    .toFile(outputFilename);
 
   log.info(`rendered frame ${frameIndex}/${_config.dataLength}`);
   frameIndex++;

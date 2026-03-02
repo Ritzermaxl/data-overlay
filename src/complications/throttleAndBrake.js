@@ -90,29 +90,52 @@ class complication {
     this.TORQUE_PIXEL_FACTOR_THROTTLE = (1 / this.maxThrottle) * Y_SCALE_FACTOR * ORIGINAL_MAX_TORUQE_BAR_HEIGHT;
     this.TORQUE_PIXEL_FACTOR_BRAKE = (1 / this.maxBrake) * Y_SCALE_FACTOR * ORIGINAL_MAX_TORUQE_BAR_HEIGHT;
 
+    // Pre-create bar buffers
+    this.greenBarBuffer = await sharp({
+      create: {
+        width: Math.max(1, this.wheelWidth),
+        height: Math.max(1, this.maxTorqueBarHeight),
+        channels: 4,
+        background: { r: 0, g: 255, b: 0, alpha: 0.75 },
+      },
+    })
+    .png()
+    .toBuffer();
+
+    this.redBarBuffer = await sharp({
+      create: {
+        width: Math.max(1, this.wheelWidth),
+        height: Math.max(1, this.maxTorqueBarHeight),
+        channels: 4,
+        background: { r: 255, g: 0, b: 0, alpha: 0.75 },
+      },
+    })
+    .png()
+    .toBuffer();
+
     log.info(`complication 'throttle-and-brake' initialized`);
   }
 
   async render(dataPoint, frameIndex) {
-    const pedalLayer = (pedal) => {
+    const pedalLayer = async (pedal) => {
       let dataChannel = "";
       let xOffset = 0;
       let yOffset = 0;
       let PixelFactor = 0;
-      let torqueBarBackground = { r: 255, g: 0, b: 0, alpha: 0.75 };
+      let barBuffer = this.redBarBuffer;
       switch (pedal) {
         case "throttle":
           dataChannel = this.throttleDataChannel;
           xOffset = this.rightWheelStart;
           yOffset = this.frontAxleYOffset;
-          torqueBarBackground = { r: 0, g: 255, b: 0, alpha: 0.75 };
+          barBuffer = this.greenBarBuffer;
           PixelFactor = this.TORQUE_PIXEL_FACTOR_THROTTLE;
           break;
         case "brake":
           dataChannel = this.brakeDataChannel;
           xOffset = this.leftWheelStart;
           yOffset = this.frontAxleYOffset;
-          torqueBarBackground = { r: 255, g: 0, b: 0, alpha: 0.75 };
+          barBuffer = this.redBarBuffer;
           PixelFactor = this.TORQUE_PIXEL_FACTOR_BRAKE;
           break;
       }
@@ -126,26 +149,33 @@ class complication {
       
       let rawHeight = Math.abs(Math.round(pedalData * PixelFactor));
       if (isNaN(rawHeight) || !isFinite(rawHeight)) rawHeight = 0;
-      const torqueBarHeight = Math.min(this.maxTorqueBarHeight, Math.max(1, rawHeight));
+      const torqueBarHeight = Math.max(1, Math.min(this.maxTorqueBarHeight, rawHeight));
 
       let rawYPos = Math.round(pedalData * PixelFactor);
       if (isNaN(rawYPos) || !isFinite(rawYPos)) rawYPos = 0;
-      const torqueBarYPosition = yOffset - Math.round(Math.min(this.maxTorqueBarHeight, Math.max(0, rawYPos)));
       
+      // Calculate top position and clamp it
+      let top = yOffset - Math.min(this.maxTorqueBarHeight, Math.max(0, rawYPos));
+      top = Math.max(0, Math.min(this.height - torqueBarHeight, top));
+      
+      const left = Math.max(0, Math.min(this.width - this.wheelWidth, xOffset));
+
+      const resizedBar = await sharp(barBuffer)
+        .extract({ left: 0, top: 0, width: Math.max(1, this.wheelWidth), height: torqueBarHeight })
+        .toBuffer();
 
       return {
-        input: {
-          create: {
-            width: this.wheelWidth,
-            height: torqueBarHeight,
-            channels: 4,
-            background: torqueBarBackground,
-          },
-        },
-        top: torqueBarYPosition,
-        left: xOffset,
+        input: resizedBar,
+        top: Math.round(top),
+        left: Math.round(left),
       };
     };
+
+    const layerPromises = [
+        pedalLayer("throttle"),
+        pedalLayer("brake"),
+    ];
+    const layers = await Promise.all(layerPromises);
 
     return await sharp({
       create: {
@@ -156,10 +186,7 @@ class complication {
       },
     })
       .png()
-      .composite([
-        pedalLayer("throttle"),
-        pedalLayer("brake"),
-      ])
+      .composite(layers)
       .toBuffer();
   }
 }

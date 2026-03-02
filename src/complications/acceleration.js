@@ -91,8 +91,8 @@ class complication {
     xAcceleration *= this.xAccelerationFactor;
     yAcceleration *= this.yAccelerationFactor;
 
-    const indicatorXPosition = Math.round(this.width / 2 - this.indicatorSize / 2 - yAcceleration * this.gForcePixelCount);
-    const indicatorYPosition = Math.round(this.height / 2 - this.indicatorSize / 2 + xAcceleration * this.gForcePixelCount);
+    const indicatorXPosition = Math.max(0, Math.min(this.width - this.indicatorSize, Math.round(this.width / 2 - this.indicatorSize / 2 - yAcceleration * this.gForcePixelCount)));
+    const indicatorYPosition = Math.max(0, Math.min(this.height - this.indicatorSize, Math.round(this.height / 2 - this.indicatorSize / 2 + xAcceleration * this.gForcePixelCount)));
 
     this.indicatorBuffer[this.indicatorBufferIndex % this.indicatorBufferSize] = { 
       indicatorXPosition: isNaN(indicatorXPosition) ? 0 : indicatorXPosition, 
