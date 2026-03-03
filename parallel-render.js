@@ -4,6 +4,7 @@ import { ArgumentParser } from "argparse";
 import { log } from "./src/logger.js";
 import { loadDataFile } from "./src/data-reader.js";
 import readline from "readline";
+import fs from "fs";
 
 const parser = new ArgumentParser({
   description: "Parallel data to image overlay",
@@ -13,18 +14,41 @@ parser.add_argument("-i", "--in", { help: "input data file in csv format", requi
 parser.add_argument("-c", "--config", { help: "config yaml file", required: true });
 parser.add_argument("-o", "--out", { help: "output directory", required: true });
 parser.add_argument("--resume", { type: "int", help: "resume from frame index", default: 0 });
+parser.add_argument("--limit", { type: "int", help: "limit total number of frames to render", default: 0 });
 parser.add_argument("-j", "--jobs", { type: "int", help: "number of parallel jobs (default: CPU count)", default: os.cpus().length });
 
 const args = parser.parse_args();
 
 async function runParallel() {
+  // Pre-flight checks
+  if (!fs.existsSync(args.in)) {
+    log.error(`Input file '${args.in}' does not exist.`);
+    process.exit(1);
+  }
+  if (!fs.existsSync(args.config)) {
+    log.error(`Config file '${args.config}' does not exist.`);
+    process.exit(1);
+  }
+
+  // Create output directory once before workers start
+  if (!fs.existsSync(args.out)) {
+    log.info(`Creating output directory: ${args.out}`);
+    fs.mkdirSync(args.out, { recursive: true });
+  }
+
   const data = await loadDataFile(args.in);
   const totalFramesInFile = data.length;
   const startFrame = args.resume;
-  const framesToRender = totalFramesInFile - startFrame;
+  
+  // Calculate total frames to render based on limit and file length
+  let framesToRender = totalFramesInFile - startFrame;
+  if (args.limit > 0 && args.limit < framesToRender) {
+    framesToRender = args.limit;
+  }
   
   const numJobs = Math.min(args.jobs, framesToRender);
-  const chunkSize = Math.ceil(framesToRender / numJobs);
+  const chunkSize = Math.floor(framesToRender / numJobs);
+  const remainder = framesToRender % numJobs;
 
   console.log(`\x1b[32mStarting Parallel Render\x1b[0m`);
   console.log(`Total Frames: ${framesToRender}`);
@@ -44,10 +68,12 @@ async function runParallel() {
   };
 
   const workers = [];
+  let currentStart = startFrame;
 
   for (let j = 0; j < numJobs; j++) {
-    const workerResume = startFrame + (j * chunkSize);
-    const workerLimit = Math.min(chunkSize, totalFramesInFile - workerResume);
+    const workerLimit = chunkSize + (j < remainder ? 1 : 0);
+    const workerResume = currentStart;
+    currentStart += workerLimit;
     
     if (workerLimit <= 0) continue;
 
