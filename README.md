@@ -233,6 +233,7 @@ pnpm install
 
 ## Usage
 
+### Single-Threaded Render
 CLI Options:
 | option | description | default value | required |
 | -------------- | ------------------------- | ------------------------- | -------- |
@@ -240,10 +241,43 @@ CLI Options:
 | `-c`, `--config` | config yaml file | - | true |
 | `-o`, `--out` | output directory | - | true |
 | `--frame-offset` | frame offset | 0 | false |
+| `--resume` | resume from frame index | 0 | false |
+| `--limit` | limit number of frames to render | 0 (unlimited) | false |
 
+```bash
+pnpm run render -i <csv file> -c <config file> -o <output directory>
 ```
-pnpm run render -i <csv file> -c <config file> -o <output directory> [--frame-offset <frame offset>]
+
+### Parallel Rendering (Recommended)
+For large datasets (e.g. 80k frames), use the parallel renderer to utilize all CPU cores. It divides the work into chunks and spawns isolated worker processes for maximum stability and speed.
+
+CLI Options:
+| option | description | default value | required |
+| -------------- | ------------------------- | ------------------------- | -------- |
+| `-i`, `--in` | input data file in csv format | - | true |
+| `-c`, `--config` | config yaml file | - | true |
+| `-o`, `--out` | output directory | - | true |
+| `-j`, `--jobs` | number of parallel workers | CPU count | false |
+| `--resume` | resume from frame index | 0 | false |
+| `--limit` | total frames to render | 0 (unlimited) | false |
+
+```bash
+pnpm run parallel-render -i <csv file> -c <config file> -o <output directory>
 ```
+
+The parallel renderer includes a clean UI with a global progress bar and automatic error handling for each worker.
+
+## Performance & Stability
+
+This fork includes several high-performance optimizations:
+
+- **Parallel Worker Pool**: Distributes rendering across all CPU cores.
+- **Process Isolation**: Each worker runs in its own process with `UV_THREADPOOL_SIZE=1` and `sharp.concurrency(1)` to prevent native `libvips` crashes (SIGFPE).
+- **Render Caching**: The `text` complication caches rendered strings to avoid redundant calls to the Pango engine.
+- **Pre-calculated Assets**: Complications like `acceleration` and `torqueVectoring` pre-calculate buffers during initialization.
+- **Fast I/O**: PNG encoding is optimized for speed (`compressionLevel: 1`) to reduce disk bottlenecks.
+- **SIMD Acceleration**: Enabled for hardware-level pixel processing.
+- **RAM Disk Support**: For absolute maximum speed, point the output directory to a RAM disk (e.g. `/dev/shm/render` on Linux).
 
 ## Example
 
