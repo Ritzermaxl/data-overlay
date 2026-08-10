@@ -1,0 +1,6 @@
+asammdf>=8.6,<9
+marpledata>=2.2.1,<3
+numpy>=2,<3
+pandas>=2.2,<3
+PyYAML>=6,<7
+requests>=2.31,<3

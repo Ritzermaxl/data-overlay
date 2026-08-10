@@ -356,3 +356,13 @@ poetry.toml
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 *.cpuprofile
+
+# Local captures and render output; retained locally in archive/ only.
+archive/
+*.csv
+*.mdf
+*.mf4
+
+# Keep machine-specific environment files, including credentials, out of Git.
+.env.*
+!.env.example

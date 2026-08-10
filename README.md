@@ -213,12 +213,39 @@ The `steeringwheel` complication visualizes the steering Angle. SteeringAngle is
     y: 500
     options:
       steeringAngle: BCM_steering_angle
-```
 
-## Installation
+  #### trackmap
 
-### Prerequisites
+  The `trackmap` complication generates a 2D outline of the track from GPS coordinates and displays a real-time "moving dot" for the car's position. It automatically scales and centers the track based on the entire measurement session.
 
+  | option | description | required | default value |
+  | ------------------- | --------------------------------------------- | -------- | ----------------------------- |
+  | latDataChannel | data channel for GPS Latitude | false | Gyro_Movella_GPS_Latitude |
+  | lonDataChannel | data channel for GPS Longitude | false | Gyro_Movella_GPS_Longitude |
+  | carColor | color of the car indicator | false | red |
+  | trackColor | color of the track outline | false | white |
+  | carIndicatorSize | size of the car indicator dot in pixels | false | 10 |
+  | trackWidth | width of the track outline in pixels | false | 3 |
+
+  ```yml
+  complications:
+  - type: trackmap
+    width: 300
+    height: 300
+    x: 1580
+    y: 450
+    options:
+      latDataChannel: Gyro_Movella_GPS_Latitude
+      lonDataChannel: Gyro_Movella_GPS_Longitude
+      carColor: red
+      trackColor: white
+      carIndicatorSize: 15
+      trackWidth: 4
+  ```
+
+  ## Installation
+
+  ### Prerequisites
 - To run the tool locally, NodeJS version 16 or higher is required. Please consult the [NodeJS website][nodejs] for further information.
 - `pnpm` is recommended to install all dependencies. `npm` and `yarn` will do as well, just be warned, that no `package-lock.json` or `yarn.lock` is provided.
 - ffmpeg is required to be installed on the system. Please consult the [ffmpeg documentation][ffmpeg_docs] for further information.
@@ -260,12 +287,16 @@ CLI Options:
 | `-j`, `--jobs` | number of parallel workers | CPU count | false |
 | `--resume` | resume from frame index | 0 | false |
 | `--limit` | total frames to render | 0 (unlimited) | false |
+| `--retries` | maximum automatic retries per crashed worker | 10 | false |
+| `--retry-delay` | delay between worker retries in milliseconds | 250 | false |
 
 ```bash
 pnpm run parallel-render -i <csv file> -c <config file> -o <output directory>
 ```
 
 The parallel renderer includes a clean UI with a global progress bar and automatic error handling for each worker.
+If a worker crashes, its replacement resumes at the next unconfirmed frame while the
+other workers continue rendering.
 
 ## Performance & Stability
 
@@ -282,16 +313,46 @@ This fork includes several high-performance optimizations:
 ## Example
 
 
-Preprocess measurement input data from .mf4 to .csv  
+Install the preprocessing dependencies once:
 
 ```
-python3 ./data-preprocessing/main.py <measurement_filename>.mf4 -v -c <channel_name_1> <channel_name_2> <channel_name_n> -s <some_start_time> -e <some_end_time> -r <target_fps> -o <output_filename>
+python3 -m pip install -r data-preprocessing/requirements.txt
 ```
 
-Create overlay frames depending on configuration file
+Prepare an MDF using the channels, aliases, moving-average settings, and frame rate
+from `config.yml`:
 
 ```
-pnpm run render -i <output_filename>.csv -c config.yml -o <overlay_frame_folder_name>
+python3 data-preprocessing/main.py PT23_2026-07-16_18-53-20.mdf
+```
+
+The command first uses a local file if one exists. Otherwise it finds the basename in
+the configured Marple stream (`MDF_Datalogger` by default) and downloads the original
+temporarily. The preprocessing command never uploads or modifies data in Marple.
+
+Limit the output to a time range in seconds from the beginning of the log:
+
+```
+python3 data-preprocessing/main.py PT23_2026-07-16_18-53-20.mdf --start-time 100 --end-time 160
+```
+
+Useful options:
+
+| Option | Description |
+| --- | --- |
+| `-c`, `--config` | Overlay/preprocessing YAML (default `config.yml`) |
+| `-o`, `--output` | Output CSV path (default `<MDF basename>.csv`) |
+| `--no-marple` | Require a local MDF and do not contact Marple |
+| `--keep-mdf` | Keep a file downloaded from Marple instead of using a temporary copy |
+| `-v`, `--verbose` | Show channel occurrence and rename decisions |
+
+The API token is loaded from `.env` (`API_KEY` is supported), never written to the
+CSV, and the output timeline starts at zero for direct video-frame alignment.
+
+Create overlay frames from the resulting CSV:
+
+```
+pnpm run render -i PT23_2026-07-16_18-53-20.csv -c config.yml -o overlayframes
 ```
 
 Transform, cut and overlay video (input parameters still to be added)

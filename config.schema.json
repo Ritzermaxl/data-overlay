@@ -26,6 +26,29 @@
       "exclusiveMinimum": true
     },
 
+    "dataPreprocessing": {
+      "description": "MDF-to-CSV preparation and Marple settings",
+      "type": "object",
+      "properties": {
+        "marpleStream": { "type": "string" },
+        "movingAverageMs": { "type": "number", "exclusiveMinimum": 0 },
+        "movingAverageChannels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "channelAliases": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
     "complications": {
       "description": "List of complications to be generated in the video",
       "type": "array",

@@ -5,6 +5,10 @@ import text from "./text.js";
 import rectangle from "./rectangle.js";
 import steeringwheel from "./steeringwheel.js"
 import timeplot from "./timeplot.js";
+import trackmap from "./trackmap.js";
+import yawRateBar from "./yawRateBar.js";
+import tyreTemperature from "./tyreTemperature.js";
+import suspensionTravel from "./suspensionTravel.js";
 
 const complications = {
   acceleration,
@@ -14,6 +18,10 @@ const complications = {
   throttleAndBrake,
   steeringwheel,
   timeplot,
+  trackmap,
+  yawRateBar,
+  tyreTemperature,
+  suspensionTravel,
 };
 
 export default complications;

@@ -4,6 +4,25 @@ videoWidth: 1920
 videoHeight: 1080
 # destination video frame rate in frames per second (fps)
 videoFps: 60
+
+# MDF-to-CSV automation. Channel names come from the complications below;
+# aliases let older logs satisfy the current output names.
+dataPreprocessing:
+  marpleStream: MDF_Datalogger
+  movingAverageMs: 100
+  movingAverageChannels:
+    - Gyro_Movella_Acc_X
+    - Gyro_Movella_Acc_Y
+  channelAliases:
+    gyro_movella_gyro_z: [Gyro_Movella_Gyr_Z]
+    Gyro_Movella_Acc_X: [Gyro_Mov_Acc_X, GYRO_Acceleration_accX]
+    Gyro_Movella_Acc_Y: [Gyro_Mov_Acc_Y, GYRO_Acceleration_accY]
+    Groundspeed_Vel: [Velocity, vel_car_ges]
+    SG_EMS_SOC: [HV_info_soc]
+    Inverter_1_Actual_Motor_Torque: [AMK_Torque_FL, Torque_Setpoint_FL]
+    Inverter_4_Actual_Motor_Torque: [AMK_Torque_FR, Torque_Setpoint_FR]
+    Inverter_2_Actual_Motor_Torque: [AMK_Torque_RL, Torque_Setpoint_RL]
+    Inverter_3_Actual_Motor_Torque: [AMK_Torque_RR, Torque_Setpoint_RR]
 # list of configured complications
 # for more information on complication configuration please see below
 
@@ -16,11 +35,43 @@ complications:
     options:
       xAccelerationDataChannel: Gyro_Movella_Acc_X
       yAccelerationDataChannel: Gyro_Movella_Acc_Y
-      xAccelerationFactor: -0.10193
-      yAccelerationFactor: 0.10193
+      xAccelerationFactor: 0.10193
+      yAccelerationFactor: -0.10193
       indicatorSize: 15
       indicatorBufferSize: 10
       indicatorBufferFalloff: 0.8
+
+  - type: yawRateBar
+    width: 300
+    height: 24
+    x: 50
+    y: 355
+    options:
+      signal: gyro_movella_gyro_z
+      factor: 57.2958 # rad/s to deg/s
+      maxYawRate: 90 # deg/s at either end of the bar
+
+  - type: tyreTemperature
+    width: 300
+    height: 375
+    x: 1250
+    y: 15
+    options:
+      channelTemplate: "Wheel_TireTemp_{wheel}_Ch{channel}"
+      minTemperature: 20
+      maxTemperature: 80
+
+#  - type: suspensionTravel
+#    width: 300
+#    height: 375
+#    x: 900
+#    y: 150
+#    options:
+#      flTravelDataChannel: Wheel_Travel_FL
+#      frTravelDataChannel: Wheel_Travel_FR
+#      rlTravelDataChannel: Wheel_Travel_RL
+#      rrTravelDataChannel: Wheel_Travel_RR
+#      maxTravel: 60 # mm in either direction from zero
 
   - type: text
     width: 500
@@ -35,7 +86,7 @@ complications:
       paddingChar: "0"
       suffix: " g"
       color: white
- 
+
   - type: text
     width: 500
     height: 25
@@ -70,7 +121,7 @@ complications:
       rrTorqueDataChannel: Inverter_3_Actual_Motor_Torque
       maxTorque: 30
 
-  - type: throttleAndBrake 
+  - type: throttleAndBrake
     width: 300
     height: 375
     x: 1620
@@ -102,7 +153,7 @@ complications:
     y: 900
     options:
       signal: Groundspeed_Vel
-      factor: 1
+      factor: 3.6
       digits: 0
       padding: 3
       paddingChar: "0"
@@ -139,7 +190,7 @@ complications:
       suffix: " C"
       color: white
 
-  - type: timeplot 
+  - type: timeplot
     width: 400
     height: 100
     x: 760
@@ -149,3 +200,16 @@ complications:
       brakeDataChannel: DCM_Brake_Recu
       maxThrottle: 100
       maxBrake: 100
+
+  - type: trackmap
+    width: 300
+    height: 300
+    x: 1580
+    y: 450
+    options:
+      latDataChannel: Gyro_Movella_GPS_Latitude
+      lonDataChannel: Gyro_Movella_GPS_Longitude
+      carColor: red
+      trackColor: white
+      carIndicatorSize: 15
+      trackWidth: 4

@@ -8,11 +8,11 @@ import { loadConfig, createOutputDirectory } from "./util.js";
 import renderer from "./renderer.js";
 import sharp from "sharp";
 
-// Enforce strict single-threaded operation and enable hardware acceleration
+// Enforce strict single-threaded operation and disable unstable optimizations
 sharp.concurrency(1);
 sharp.cache(0);
 sharp.cache(false);
-sharp.simd(true);
+sharp.simd(false);
 
 const parser = new ArgumentParser({
   description: "data to image overlay",
@@ -27,63 +27,59 @@ parser.add_argument("--limit", { type: "int", help: "limit number of frames to r
 
 
 const args = parser.parse_args();
-log.debug(`input file: ${args.in}`);
-log.debug(`config file: ${args.config}`);
-log.debug(`output directory: ${args.out}`);
 
 async function main() {
   const config = await loadConfig(args.config);
-  let data = await loadDataFile(args.in);
-
-  // Apply frame offset if positive
-  if (args.frame_offset > 0) {
-    data = data.slice(args.frame_offset);
-  }
+  const data = await loadDataFile(args.in);
 
   config.dataLength = data.length;
   config.args = args;
-  log.debug(`printing config file\n${JSON.stringify(config, null, 2)}`);
 
   await createOutputDirectory(args.out);
-  log.info(`initializing renderer`);
-  await renderer.init(config, data, args.resume);   // pass resume frame index
+
+  log.info(`initializing renderer (resume: ${args.resume}, limit: ${args.limit}, offset: ${args.frame_offset})`);
+  await renderer.init(config, data, args.resume);
   log.info(`renderer initialized`);
 
   log.info(`starting rendering`);
 
-  // "pre-roll" empty frames if negative offset
-  if (args.frame_offset < 0) {
-    for (let i = 0; i < Math.abs(args.frame_offset); i++) {
-      await renderer.render({});
-    }
-  }
+  // We use a robust loop that handles offset and resume correctly
+  // Total frames to render is based on the data length plus any positive offset
+  const totalPossibleFrames = data.length + (args.frame_offset < 0 ? Math.abs(args.frame_offset) : 0);
 
-  // Now actually render, skipping until resume index
-  let framesRendered = 0;
-  for (let [i, dataPoint] of data.entries()) {
-    if (i < args.resume) continue;
-    
+  let framesRenderedInThisPass = 0;
+
+  for (let i = args.resume; i < totalPossibleFrames; i++) {
     // Check limit
-    if (args.limit > 0 && framesRendered >= args.limit) {
-      log.info(`reached frame limit of ${args.limit}, stopping`);
+    if (args.limit > 0 && framesRenderedInThisPass >= args.limit) {
+      log.info(`reached worker limit of ${args.limit}, stopping`);
       break;
     }
 
+    // Determine which data point to use based on the offset
+    // frameIndex 'i' is the output filename index (000001.png)
+    // dataIndex is the row in the CSV
+    const dataIndex = i - args.frame_offset;
+
     try {
+      const dataPoint = (dataIndex >= 0 && dataIndex < data.length) ? data[dataIndex] : {};
       await renderer.render(dataPoint);
-      framesRendered++;
+      framesRenderedInThisPass++;
     } catch (err) {
       log.error(`failed rendering frame ${i}: ${err.message}`);
-      // optionally continue instead of crashing:
-      // continue;
       process.exit(1);
     }
   }
 
-  log.info(`rendering done`);
+  log.info(`rendering pass done`);
 }
 
 
 (async () => {
-  await main();
+  try {
+    await main();
+  } catch (err) {
+    log.error(`Fatal error: ${err.message}`);
+    process.exit(1);
+  }
 })();

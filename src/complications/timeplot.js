@@ -16,7 +16,7 @@ class complication {
     this.timeDataChannel = "timestamps";
   }
 
-  async init(config, data) {
+  async init(config, data, resumeFrame = 0, frameOffset = 0) {
     log.info(`initializing complication 'timeplot'`);
     this.width = config.width;
     this.height = config.height;
@@ -25,6 +25,35 @@ class complication {
     this.brakeDataChannel = config.options.brakeDataChannel;
     this.maxThrottle = config.options.maxThrottle || 1;
     this.maxBrake = config.options.maxBrake || 1;
+    this.maxHistorySeconds = config.options.maxHistorySeconds || 10;
+
+    // Every parallel worker has its own complication instance. When a worker
+    // starts in the middle of the video (or is restarted after a crash), seed
+    // its history with the samples immediately preceding its first frame so
+    // the plot does not visibly empty at worker boundaries.
+    const firstDataIndex = resumeFrame - frameOffset;
+    if (firstDataIndex > 0 && firstDataIndex < data.length) {
+      const firstTime = parseFloat(data[firstDataIndex][this.timeDataChannel]);
+
+      if (Number.isFinite(firstTime)) {
+        const historyStart = firstTime - this.maxHistorySeconds;
+        const precedingHistory = [];
+
+        for (let i = firstDataIndex - 1; i >= 0; i--) {
+          const time = parseFloat(data[i][this.timeDataChannel]);
+          if (!Number.isFinite(time)) continue;
+          if (time < historyStart) break;
+
+          precedingHistory.push({
+            time,
+            throttle: parseFloat(data[i][this.throttleDataChannel]) || 0,
+            brake: parseFloat(data[i][this.brakeDataChannel]) || 0,
+          });
+        }
+
+        this.history = precedingHistory.reverse();
+      }
+    }
     log.info(`complication 'timeplot' initialized`);
   }
 
